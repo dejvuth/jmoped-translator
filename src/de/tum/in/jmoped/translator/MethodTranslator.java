@@ -255,6 +255,7 @@ public class MethodTranslator implements ModuleMaker {
 				break;
 			
 			case Opcodes.OPCODE_GOTO:
+			case Opcodes.OPCODE_GOTO_W:
 				module.addRule(label, d, TranslatorUtils.branchTarget(name, ainst));
 				break;
 			
