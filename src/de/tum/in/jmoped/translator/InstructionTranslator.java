@@ -355,7 +355,7 @@ public class InstructionTranslator {
 		case Opcodes.OPCODE_INEG:
 			return new ExprSemiring(UNARYOP, UnaryOpType.NEG);
 			
-		//TODO
+		//TODO should be translated to ONE with CONTAINS
 		case Opcodes.OPCODE_INSTANCEOF:
 			return new ExprSemiring(ONE);
 			

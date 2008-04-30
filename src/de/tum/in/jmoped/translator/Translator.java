@@ -600,7 +600,7 @@ public class Translator {
 		// Includes stub first, if any
 		ClassTranslator collection;
 		if (StubManager.hasStub(extractedClassName)) {
-			collection = StubManager.createClassStub(included.size() + 1, className);
+			collection = StubManager.createClassStub(included.size() + 1, className, searchPaths);
 			log("\tstub: %s%n", collection.getName());
 		} 
 		
