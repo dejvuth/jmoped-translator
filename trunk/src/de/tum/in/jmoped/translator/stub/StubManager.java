@@ -9,7 +9,6 @@ import org.gjt.jclasslib.io.ClassFileReader;
 import org.gjt.jclasslib.structures.ClassFile;
 import org.gjt.jclasslib.structures.InvalidByteCodeException;
 
-import de.tum.in.jmoped.SearchUtils;
 import de.tum.in.jmoped.translator.ClassTranslator;
 import de.tum.in.jmoped.translator.TranslatorUtils;
 
@@ -84,14 +83,14 @@ public class StubManager {
 	public static ClassFile findClassFile(String className) 
 			throws InvalidByteCodeException, IOException {
 		
-		URL url = null;
-		try {
-			url = SearchUtils.findURL(className);
-		} catch (NoClassDefFoundError e) {
-			return null;
-		}
-		if (url != null) 
-			return ClassFileReader.readFromInputStream(url.openStream());
+//		URL url = null;
+//		try {
+//			url = SearchUtils.findURL(className);
+//		} catch (NoClassDefFoundError e) {
+//			return null;
+//		}
+//		if (url != null) 
+//			return ClassFileReader.readFromInputStream(url.openStream());
 		
 //		// Looks at each classpaths
 //		String fileName = String.format("%s.class", className)
@@ -121,14 +120,14 @@ public class StubManager {
 	 * @throws IOException
 	 * @throws InvalidByteCodeException
 	 */
-	public static ClassTranslator createClassStub(int id, String className) 
+	public static ClassTranslator createClassStub(int id, String className, String[] searchPaths) 
 			throws IOException, InvalidByteCodeException {
 		
 		String prefixClassName = prefixName(className);
 		ClassFile cf = findClassFile(prefixClassName);
 		if (cf == null) {
 			cf = TranslatorUtils.findClassFile(prefixClassName, 
-					new String[] { "jmoped/bin" });
+					searchPaths);
 			if (cf == null) return null;
 		}
 		return new ClassTranslator(id, cf);
