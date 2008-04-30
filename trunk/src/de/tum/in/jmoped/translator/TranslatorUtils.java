@@ -225,6 +225,13 @@ public class TranslatorUtils {
 		return prefix + offset;
 	}
 	
+	/**
+	 * Gets the branch target from the instruction <code>ainst</code>.
+	 * 
+	 * @param name the module name.
+	 * @param ainst the instruction.
+	 * @return the branch target.
+	 */
 	public static String branchTarget(String name, AbstractInstruction ainst) {
 		
 		int to = ainst.getOffset() + ((BranchInstruction) ainst).getBranchOffset();

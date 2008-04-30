@@ -355,9 +355,8 @@ public class InstructionTranslator {
 		case Opcodes.OPCODE_INEG:
 			return new ExprSemiring(UNARYOP, UnaryOpType.NEG);
 			
-		//TODO should be translated to ONE with CONTAINS
 		case Opcodes.OPCODE_INSTANCEOF:
-			return new ExprSemiring(ONE);
+			return instanceofInst(translator, cp, ainst);
 			
 		case Opcodes.OPCODE_INVOKEINTERFACE:
 			return new ExprSemiring(ExprType.INVOKE, TranslatorUtils.getReferencedName(cp, ainst));
@@ -565,16 +564,14 @@ public class InstructionTranslator {
 		}
 	}
 	
-	private static ExprSemiring checkcast(Translator translator, CPInfo[] cp, 
-			AbstractInstruction ainst) {
+	private static Set<Integer> getCandidateTypes(Translator translator, 
+			CPInfo[] cp, AbstractInstruction ainst) {
 		
 		String className = TranslatorUtils.resolveClassName(cp, ainst);
 		ClassTranslator ct = translator.getClassTranslator(className);
 		log("\tclassName: %s%n", ct.getName());
 		
-		// Null is ok, always included
 		Set<Integer> set = new HashSet<Integer>();
-		set.add(0);
 		
 		// Adds ids of all subs
 		Set<ClassTranslator> subs = new HashSet<ClassTranslator>();
@@ -608,6 +605,18 @@ public class InstructionTranslator {
 			}
 		}
 		
+		return set;
+	}
+	
+	private static ExprSemiring checkcast(Translator translator, CPInfo[] cp, 
+			AbstractInstruction ainst) {
+
+		// Gets all candidates
+		Set<Integer> set = getCandidateTypes(translator, cp, ainst);
+		
+		// Null is ok, always included
+		set.add(0);
+		
 		ExprSemiring.Condition cond = new ExprSemiring.Condition(
 				ExprSemiring.Condition.ConditionType.CONTAINS, 
 				set);
@@ -635,6 +644,15 @@ public class InstructionTranslator {
 		}
 		return new ExprSemiring(ExprType.INC, 
 				new ExprSemiring.Inc(iinst.getImmediateByte(), c));
+	}
+	
+	private static ExprSemiring instanceofInst(Translator translator, CPInfo[] cp, 
+			AbstractInstruction ainst) {
+
+		// Gets all candidates
+		Set<Integer> set = getCandidateTypes(translator, cp, ainst);
+		
+		return new ExprSemiring(UNARYOP, ExprSemiring.UnaryOpType.CONTAINS, set);
 	}
 	
 	private static ExprSemiring invokevirtualInst(CPInfo[] cp, AbstractInstruction ainst) {
