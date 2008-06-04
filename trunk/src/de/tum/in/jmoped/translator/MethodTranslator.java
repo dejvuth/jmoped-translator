@@ -329,7 +329,9 @@ public class MethodTranslator implements ModuleMaker {
 				if (translator.multithreading() && translator.nondeterministic())
 					module.addSharedRule(label, d, nextLabel(i));
 				else
-					module.addRule(label, new ExprSemiring(POPPUSH, 1, false), nextLabel(i));
+					module.addRule(label, 
+							new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), 
+							nextLabel(i));
 				break;
 				
 			case Opcodes.OPCODE_NEW:
@@ -846,7 +848,7 @@ public class MethodTranslator implements ModuleMaker {
 				module.addSharedRule(label, new ExprSemiring(WAITINVOKE), freshlabel);
 				module.addSharedRule(freshlabel, new ExprSemiring(WAITRETURN), nextlabel);
 			} else {
-				module.addRule(label, new ExprSemiring(POPPUSH, 1, false), freshlabel);
+				module.addRule(label, new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), freshlabel);
 				module.addRule(freshlabel, new ExprSemiring(ONE), freshlabel);
 			}
 			return true;
@@ -858,7 +860,7 @@ public class MethodTranslator implements ModuleMaker {
 						new ExprSemiring(NOTIFY, ExprSemiring.NotifyType.NOTIFY), 
 						nextlabel);
 			} else {
-				module.addRule(label, new ExprSemiring(POPPUSH, 1, false), nextlabel);
+				module.addRule(label, new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), nextlabel);
 			}
 			return true;
 		}
@@ -869,7 +871,7 @@ public class MethodTranslator implements ModuleMaker {
 						new ExprSemiring(NOTIFY, ExprSemiring.NotifyType.NOTIFYALL), 
 						nextlabel);
 			} else {
-				module.addRule(label, new ExprSemiring(POPPUSH, 1, false), nextlabel);
+				module.addRule(label, new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), nextlabel);
 			}
 			return true;
 		}
@@ -880,9 +882,9 @@ public class MethodTranslator implements ModuleMaker {
 	private void poppush(String label, String desc, boolean stc, String nextlabel) {
 		
 		log("\tpoppush(%s, %s, %b, %s)%n", label, desc, stc, nextlabel);
-		module.addRule(label, POPPUSH, 
+		module.addRule(label, POPPUSH, new ExprSemiring.Poppush(
 				TranslatorUtils.countParams(desc) + ((stc) ? 0 : 1), 
-				!TranslatorUtils.isVoid(desc), 
+				TranslatorUtils.getReturnCategory(desc).intValue()), 
 				nextlabel);
 	}
 	

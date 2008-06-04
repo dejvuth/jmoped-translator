@@ -588,12 +588,12 @@ public class Translator {
 		if (included.containsKey(extractedClassName))
 			return;
 		
-		// Includes array types
+		// (Recursively) includes array types
 		if (extractedClassName.startsWith("[")) {
-			included.put(extractedClassName, new ClassTranslator(included.size() + 1, extractedClassName));
+			included.put(extractedClassName, 
+					new ClassTranslator(included.size() + 1, extractedClassName));
 			if (extractedClassName.charAt(1) == '[')
 				includeAllReachableClasses(extractedClassName.substring(1));
-//			includeAllReachableClasses(TranslatorUtils.removeArrayPrefix(extractedClassName));
 			return;
 		}
 		
@@ -672,7 +672,6 @@ public class Translator {
 				case Opcodes.OPCODE_INVOKESTATIC:
 				case Opcodes.OPCODE_INVOKEVIRTUAL:
 					String[] refs = TranslatorUtils.getReferencedName(cp, ainst);
-//					ref = TranslatorUtils.removeArrayPrefix(refs[0]);
 					ref = refs[0];
 					
 				case Opcodes.OPCODE_ANEWARRAY:
@@ -680,11 +679,11 @@ public class Translator {
 						ref = "[L" + TranslatorUtils.resolveClassName(cp, ainst) + ";";
 					
 				case Opcodes.OPCODE_CHECKCAST:
+				case Opcodes.OPCODE_INSTANCEOF:
 				case Opcodes.OPCODE_MULTIANEWARRAY:
 				case Opcodes.OPCODE_NEW:
 					if (ref == null) {
 						ref = TranslatorUtils.resolveClassName(cp, ainst);
-//						ref = TranslatorUtils.removeArrayPrefix(ref);
 					}
 					
 				case Opcodes.OPCODE_NEWARRAY:
