@@ -30,6 +30,7 @@ import org.gjt.jclasslib.structures.constants.ConstantUtf8Info;
 
 import de.tum.in.jmoped.translator.stub.StubManager;
 import de.tum.in.jmoped.underbone.LabelUtils;
+import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
 
 /**
  * The translator's utility class.
@@ -396,8 +397,8 @@ public class TranslatorUtils {
 	 * that returns void.
 	 * 
 	 * @param desc the method's descriptor.
-	 * @return  <code>true</code> if the descriptor is from a method
-	 * that returns void.
+	 * @return <code>true</code> if the descriptor is from a method
+	 * 		that returns void.
 	 */
 	public static boolean isVoid(String desc) {
 		return desc.endsWith("V");
@@ -417,14 +418,56 @@ public class TranslatorUtils {
 		}
 	}
 	
+	/**
+	 * Determines the category of variable <code>type</code>.
+	 * 
+	 * @param type the variable type.
+	 * @return the category of variable type.
+	 */
+	public static CategoryType getCategory(String type) {
+		if (type.equals("J") || type.equals("D"))
+			return CategoryType.TWO;
+		return CategoryType.ONE;
+	}
+	
+	/**
+	 * Returns the return type of a method descriptor specified by 
+	 * <code>desc</code>.
+	 * 
+	 * @param desc the method descriptor.
+	 * @return the return type.
+	 */
+	public static String getReturnType(String desc) {
+		return desc.substring(desc.indexOf(')') + 1);
+	}
+	
+	/**
+	 * Returns the category of the return type from the method descriptor
+	 * <code>desc</code>.
+	 * 
+	 * @param desc the method's descriptor.
+	 * @return the category of the return type from the method descriptor.
+	 */
+	public static CategoryType getReturnCategory(String desc) {
+		return getCategory(getReturnType(desc));
+	}
+	
+	/**
+	 * Returns <code>true</code> if the static bit of <code>flag</code>
+	 * is set.
+	 * 
+	 * @param flag the flag.
+	 * @return <code>true</code> if the static bit of <code>flag</code>
+	 * is set.
+	 */
 	public static boolean isStatic(int flag) {
-		
 		return (flag & AccessFlags.ACC_STATIC) != 0;
 	}
 	
 	/**
 	 * Returns the number of parameters given the method's descriptor in 
 	 * the JVM standard.
+	 * Parameters of category 2 are counted twice.
 	 *
 	 * @param descriptor the method descriptor.
 	 * @return the number of parameters.
@@ -432,27 +475,17 @@ public class TranslatorUtils {
 	public static int countParams(String descriptor) {
 		
 		int count = 0;
-		String param = descriptor.substring(1, descriptor.indexOf(")"));
-		
-		for (int i = 0; i < param.length(); i++) {
-			if (param.charAt(i) == '[') {
-				continue;
-			}
-			if (param.charAt(i) == 'L') {
-				while (param.charAt(i) != ';') {
-					i++;
-				}
-			}
-			count++;
+		List<String> params = LabelUtils.getParamTypes(descriptor);
+		for (String param : params) {
+			count += getCategory(param).intValue();
 		}
-		
 		return count;
 	}
 	
-	public static int countParams(CPInfo[] cp, AbstractInstruction ainst) {
-		
-		return countParams(getCalledDescriptor(cp, ainst));
-	}
+//	public static int countParams(CPInfo[] cp, AbstractInstruction ainst) {
+//		
+//		return countParams(getCalledDescriptor(cp, ainst));
+//	}
 	
 	/**
 	 * Returns the array of parameter types as specified by the
