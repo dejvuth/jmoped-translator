@@ -189,15 +189,15 @@ public class MethodWrapper {
 	private void initRanges() throws InvalidByteCodeException {
 		
 		log("Entering initRanges()%n");
+		paramTypes = LabelUtils.getParamTypes(methodDesc);
 		
-//		ClassFile cf = translator.getClassTranslator(className).getClassFile();
-//		MethodInfo mi = cf.getMethod(methodName, methodDesc);
+		// Finds annotations
 		ClassFile cf = mi.getClassFile();
 		LocalVariableTableEntry[] lvtEntries = TranslatorUtils.getLocalVariableTableEntries(mi);
 		ElementValue[] annotatedBits = AnnotationUtils.getAnnotatedBits(mi);
 		ElementValue[] annotatedRange = AnnotationUtils.getAnnotatedRange(mi);
 		CPInfo[] cp = cf.getConstantPool();
-		paramTypes = LabelUtils.getParamTypes(methodDesc);
+		
 		int i = -1;
 		String paramName;
 		Integer[] minmax;
@@ -206,7 +206,9 @@ public class MethodWrapper {
 			
 			i++;
 			log("(%d) param: %s%n", i, param);
-			paramName = TranslatorUtils.getConstantUtf8(cp, lvtEntries[i].getNameIndex());
+			paramName = (lvtEntries == null) 
+				? null 
+				: TranslatorUtils.getConstantUtf8(cp, lvtEntries[i].getNameIndex());
 			minmax = AnnotationUtils.getMinMax(annotatedRange, cf, paramName, i);
 			if (minmax != null) {
 				ranges.put(i, new Range(minmax));

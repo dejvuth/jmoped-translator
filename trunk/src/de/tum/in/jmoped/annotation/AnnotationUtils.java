@@ -33,8 +33,7 @@ public class AnnotationUtils {
 	 * @return the array of <code>ElementValue</code>, or null if there is no
 	 *         annotation
 	 * @throws InvalidByteCodeException
-	 * @see getBit(ElementValue[], ClassFile, String, int)
-	 * @see getBit(ElementValue, ClassFile)
+	 * @see #getBits(ElementValue[], ClassFile, String, int)
 	 */
 	public static ElementValue[] getAnnotatedBits(MethodInfo methodInfo)
 			throws InvalidByteCodeException {
@@ -56,6 +55,17 @@ public class AnnotationUtils {
 		return (annotation != null) ? getArrayElements(annotation) : null;
 	}
 	
+	/**
+	 * Returns the array of type <code>ElementValue</code> -- the data
+	 * structure that represents annotations for parameters and local variables
+	 * &#064;Range.
+	 * 
+	 * @param methodInfo the method info
+	 * @return the array of <code>ElementValue</code>, or null if there is no
+	 *         annotation
+	 * @throws InvalidByteCodeException
+	 * @see #getBits(ElementValue[], ClassFile, String, int)
+	 */
 	public static ElementValue[] getAnnotatedRange(MethodInfo methodInfo) 
 			throws InvalidByteCodeException {
 		
@@ -222,39 +232,37 @@ public class AnnotationUtils {
 	public static Integer getBits(ElementValue[] values, ClassFile classFile, 
 			String var, int varIndex) {
 		
-		int index;
-		ConstantUtf8Info info;
-		String[] consts;
-		
-		if (values == null) {
-			return null;
-		}
+		// Returns null if no annotations
+		if (values == null) return null;
 		
 		try {
-			
+			// Searches for each annotation
 			for (int i = 0; i < values.length; i++) {
 				
-				index = ((ConstElementValue) values[i]).getConstValueIndex();
-				info = classFile.getConstantPoolUtf8Entry(index);
-				Translator.log("i: %s, info.getString(): %s%n", i, info.getString());
+				// Gets the annotation (from the constant pool)
+				int index = ((ConstElementValue) values[i]).getConstValueIndex();
+				ConstantUtf8Info info = classFile.getConstantPoolUtf8Entry(index);
+				String string = info.getString();
+				Translator.log("i: %s, info.getString(): %s%n", i, string);
 				
+				// If the annotation's index equals to the variable index
 				if (varIndex == i) {
 					try {
-						return new Integer(info.getString());
+						return new Integer(string);
 					} catch (NumberFormatException e) {
 					}
 				}
 				
-				consts = info.getString().split("[ :=]");
-				for (int j = 0; j < consts.length; j++)
-//					logger.debug("(" + j + ") " + consts[j]);
-				
-				if (consts == null || consts.length < 2)
+				// Splits the annotation
+				String[] splitted = string.split("[ :=]");
+				if (splitted == null || splitted.length < 2)
 					continue;
 				
-				if (consts[0].equals(var)) {
+				// If the first splitted string matches the variable name
+				if (splitted[0].equals(var)) {
 					try {
-						return new Integer(consts[consts.length - 1]);
+						// The last splitted string is the bits
+						return new Integer(splitted[splitted.length - 1]);
 					} catch (NumberFormatException e) {
 						continue;
 					}
@@ -269,36 +277,59 @@ public class AnnotationUtils {
 		return null;
 	}
 	
+	/**
+	 * Gets the integer inside the range.
+	 * 
+	 * @param values the annotation values.
+	 * @param classFile the class file.
+	 * @param var the variable name.
+	 * @param varIndex the variable index.
+	 * @param left the character to the left of the integer.
+	 * @param right the character to the right of the integer.
+	 * @return the integer.
+	 * @throws InvalidByteCodeException
+	 */
 	private static Integer getRange(ElementValue[] values, ClassFile classFile, 
 			String var, int varIndex, char left, char right) 
 			throws InvalidByteCodeException {
 		
-		int index;
-		ConstantUtf8Info info;
-		String[] consts;
-		
+		// Returns null if no annotations
 		if (values == null) return null;
+		
+		// Searches for each annotation
 		for (int i = 0; i < values.length; i++) {
-				
-			index = ((ConstElementValue) values[i]).getConstValueIndex();
-			info = classFile.getConstantPoolUtf8Entry(index);
 			
-			if (varIndex == i) {
+			// Gets the annotation (from the constant pool)
+			int index = ((ConstElementValue) values[i]).getConstValueIndex();
+			ConstantUtf8Info info = classFile.getConstantPoolUtf8Entry(index);
+			String string = info.getString();
+			
+			/*
+			 *  If this annotation is range (i.e. without a variable name)
+			 *  and its index equals to the variable index
+			 */
+			if (string.startsWith("[") && string.endsWith("]") && varIndex == i) {
 				try {
-					String s = info.getString();
-					return new Integer(s.substring(s.indexOf(left) + 1, s.indexOf(right)));
+					// Gets the range
+					return new Integer(string.substring(
+							string.indexOf(left) + 1, string.indexOf(right)));
 				} catch (Exception e) {
+					continue;
 				}
 			}
 			
-			consts = info.getString().split("[ :=]");
-			if (consts == null || consts.length < 2)
+			// Splits the annotation
+			String[] splitted = string.split("[ :=]");
+			if (splitted == null || splitted.length < 2)
 				continue;
 			
-			if (consts[0].equals(var)) {
+			// If the first splitted string matches the variable name
+			if (splitted[0].equals(var)) {
 				try {
-					String s = consts[consts.length - 1];
-					return new Integer(s.substring(s.indexOf(left) + 1, s.indexOf(right)));
+					// The last splitted string is the range
+					String s = splitted[splitted.length - 1];
+					return new Integer(s.substring(
+							s.indexOf(left) + 1, s.indexOf(right)));
 				} catch (Exception e) {
 					continue;
 				}
@@ -308,6 +339,17 @@ public class AnnotationUtils {
 		return null;
 	}
 	
+	/**
+	 * Gets the array of integers specifying the min-max range annotated for
+	 * the variable <code>var</code>.
+	 * 
+	 * @param values the annotation values.
+	 * @param classFile the class file.
+	 * @param var the variable name.
+	 * @param varIndex the variable index.
+	 * @return the min-max range.
+	 * @throws InvalidByteCodeException
+	 */
 	public static Integer[] getMinMax(ElementValue[] values, ClassFile classFile, 
 			String var, int varIndex) throws InvalidByteCodeException {
 		
@@ -318,6 +360,16 @@ public class AnnotationUtils {
 		return new Integer[] { min, max };
 	}
 	
+	/**
+	 * Gets the array of integers specifying the min-max range annotated for
+	 * elements of the array <code>var</code>.
+	 * 
+	 * @param values the annotation values.
+	 * @param methodInfo the method info
+	 * @param var the variable name.
+	 * @return the min-max range.
+	 * @throws InvalidByteCodeException
+	 */
 	public static Integer[] getArrayMinMax(ElementValue[] values, 
 			MethodInfo methodInfo, String var) throws InvalidByteCodeException {
 		
