@@ -112,7 +112,7 @@ public class InstructionTranslator {
 			return checkcast(translator, cp, ainst);
 			
 		case Opcodes.OPCODE_D2F:
-			return new ExprSemiring(ONE);
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.D2F));
 			
 		case Opcodes.OPCODE_D2I:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.D2I));
@@ -200,7 +200,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(DUP, ExprSemiring.DupType.DUP_X2);
 			
 		case Opcodes.OPCODE_F2D:
-			return new ExprSemiring(ONE);
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.F2D));
 			
 		case Opcodes.OPCODE_F2I:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.F2I));
@@ -291,6 +291,8 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2F));
 			
 		case Opcodes.OPCODE_I2L:
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2L));
+			
 		case Opcodes.OPCODE_I2S:
 			return new ExprSemiring(ONE);
 			
@@ -446,7 +448,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2F));
 			
 		case Opcodes.OPCODE_L2I:
-			return new ExprSemiring(ONE);
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2I));
 			
 		case Opcodes.OPCODE_LADD:
 			return new ExprSemiring(ARITH, ArithType.ADD, CategoryType.TWO);
@@ -552,7 +554,7 @@ public class InstructionTranslator {
 			return multianewarray(translator, cp, TranslatorUtils.getNewarrayType(ainst), 1);
 			
 		case Opcodes.OPCODE_POP:
-			return new ExprSemiring(POPPUSH, 1, false);
+			return new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0));
 			
 		case Opcodes.OPCODE_PUTFIELD:
 			return new ExprSemiring(FIELDSTORE, 

@@ -301,7 +301,7 @@ public class TranslatorUtils {
 	
 	/**
 	 * Resolves class name from the abstraction instruction.
-	 * The instruction must be followed by (short) index to the constant pool.
+	 * The instruction must be followed by a (short) index to the constant pool.
 	 *
 	 * @param cp the constant pool.
 	 * @param ainst the abstract instruction.
@@ -437,6 +437,8 @@ public class TranslatorUtils {
 	 * @return the category of variable type.
 	 */
 	public static CategoryType getCategory(String type) {
+		if (type.equals("V"))
+			return CategoryType.ZERO;
 		if (type.equals("J") || type.equals("D"))
 			return CategoryType.TWO;
 		return CategoryType.ONE;
@@ -493,11 +495,6 @@ public class TranslatorUtils {
 		}
 		return count;
 	}
-	
-//	public static int countParams(CPInfo[] cp, AbstractInstruction ainst) {
-//		
-//		return countParams(getCalledDescriptor(cp, ainst));
-//	}
 	
 	/**
 	 * Returns the array of parameter types as specified by the
