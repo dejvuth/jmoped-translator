@@ -239,11 +239,23 @@ public class TranslatorUtils {
 		return formatName(name, to);
 	}
 	
+	/**
+	 * Gets the 8-bits operand that follows the instruction.
+	 * 
+	 * @param ainst the instruction.
+	 * @return the operand.
+	 */
 	public static int immediateByte(AbstractInstruction ainst) {
 		
 		return ((ImmediateByteInstruction) ainst).getImmediateByte();
 	}
 	
+	/**
+	 * Gets the 16-bits operand that follows the instrcution.
+	 * 
+	 * @param ainst the instruction.
+	 * @return the operand.
+	 */
 	public static int immediateShort(AbstractInstruction ainst) {
 		
 		return ((ImmediateShortInstruction) ainst).getImmediateShort();
@@ -553,11 +565,23 @@ public class TranslatorUtils {
 		return true;
 	}
 	
+	/**
+	 * Returns the local variable table of the method specified 
+	 * by <code>mi</code>; or <code>null</code> if none.
+	 * 
+	 * @param mi the method info.
+	 * @return the local variable table; or <code>null</code> if none.
+	 */
 	public static LocalVariableTableEntry[] getLocalVariableTableEntries(MethodInfo mi) {
-			
+		// Finds code attribute
 		CodeAttribute codeAttr = (CodeAttribute) mi.findAttribute(CodeAttribute.class);
+		if (codeAttr == null) return null;
+		
+		// Finds local variable attribute
 		LocalVariableTableAttribute lvtAttr = (LocalVariableTableAttribute)
 				codeAttr.findAttribute(LocalVariableTableAttribute.class);
+		if (lvtAttr == null) return null;
+		
 		return lvtAttr.getLocalVariableTable();
 	}
 	
