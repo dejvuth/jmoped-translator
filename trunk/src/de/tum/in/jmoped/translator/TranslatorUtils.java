@@ -70,8 +70,13 @@ public class TranslatorUtils {
 	public static ClassFile findClassFile(String className,
 			String[] searchPaths) throws InvalidByteCodeException, IOException {
 		
-		// Creates file name of the class name.
-		String filename = className.replaceAll("/|\\.", File.separator) + ".class";
+		// Creates file name of the class name
+		Translator.log("TranslatorUtils.findClassFile(%s)%n", className);
+		String replacement = File.separator;
+		if (replacement.equals("\\"))
+			replacement = "\\\\";
+		String filename = className.replaceAll("/|\\.", replacement) + ".class";
+		Translator.log("filename: %s%n", filename);
 		
 		// Joins the given search paths and the classpaths
 		ArrayList<String> paths = new ArrayList<String>();
