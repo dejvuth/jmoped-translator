@@ -19,6 +19,9 @@ public class StubManager {
 			.split(System.getProperty("path.separator"));
 	
 	static {
+		// The stub's prefix is always removed.
+		stubs.add("Stub");
+		
 		stubs.add("de/tum/in/jmoped/underbone/BDDSemiring");
 		stubs.add("de/tum/in/jmoped/underbone/ExprSemiring");
 		stubs.add("de/tum/in/jmoped/underbone/Variable");

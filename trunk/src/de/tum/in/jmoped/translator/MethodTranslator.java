@@ -22,7 +22,9 @@ import org.gjt.jclasslib.structures.attributes.CodeAttribute;
 import org.gjt.jclasslib.structures.attributes.LineNumberTableAttribute;
 import org.gjt.jclasslib.structures.attributes.LineNumberTableEntry;
 
+import de.tum.in.jmoped.translator.stub.Bypasser;
 import de.tum.in.jmoped.translator.stub.StubManager;
+import de.tum.in.jmoped.underbone.ExprSemiring.ArithType;
 import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
 import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
 import de.tum.in.jmoped.underbone.ExprSemiring.If;
@@ -669,6 +671,15 @@ public class MethodTranslator implements ModuleMaker {
 			return;
 		}
 		
+//		// Bypasses the class de/tum/in/jmoped/translator/stub/Stub
+//		if (called[0].equals("Stub")) {
+//			invokestaticStub(translator, called, label, nextlabel);
+//			return;
+//		}
+		
+		if (Bypasser.bypass(module, translator, called, label, nextlabel))
+			return;
+		
 		// Bypasses if the translator doesn't include the class
 		ClassTranslator coll = translator.getClassTranslator(called[0]);
 		if (coll == null) {
@@ -779,6 +790,21 @@ public class MethodTranslator implements ModuleMaker {
 		
 		if (called[1].equals("assertTrue")) {
 			addAssertRules(label, CompType.NE, nextlabel, label, CompType.EQ);
+			return;
+		}
+		
+		throw new TranslatorError("Unimplemented case: invokestatic " 
+				+ Arrays.toString(called));
+	}
+	
+	private void invokestaticStub(Translator translator, String[] called,
+			String label, String nextlabel) {
+		
+		if (called[1].equals("nint")) {
+			
+			module.addRule(label, 
+					new ExprSemiring(ARITH, ArithType.NDT, CategoryType.ONE), 
+					nextlabel);
 			return;
 		}
 		

@@ -225,7 +225,7 @@ public class AnnotationUtils {
 	 * @param values the data structure used in annotations
 	 * @param classFile the class file
 	 * @param var the variable's name
-	 * @param varIndex the variable index
+	 * @param varIndex the variable index (first variable has index zero)
 	 * @return the number of bits, or 0 if the variable is not annotated
 	 * @throws InvalidByteCodeException
 	 */
@@ -346,7 +346,7 @@ public class AnnotationUtils {
 	 * @param values the annotation values.
 	 * @param classFile the class file.
 	 * @param var the variable name.
-	 * @param varIndex the variable index.
+	 * @param varIndex the variable index (first variable has index zero).
 	 * @return the min-max range.
 	 * @throws InvalidByteCodeException
 	 */

@@ -47,6 +47,7 @@ public class MethodWrapper {
 	private int initcount = 0;
 	
 	private HashMap<Integer, Integer> lv = new HashMap<Integer, Integer>();
+	private HashMap<Integer, Integer> amin = new HashMap<Integer, Integer>();
 	private HashMap<Integer, Integer> amax = new HashMap<Integer, Integer>();
 	
 	List<String> paramTypes;
@@ -120,6 +121,11 @@ public class MethodWrapper {
 		return name;
 	}
 	
+	/**
+	 * Returns <code>true</code> if the initial method is static.
+	 * 
+	 * @return <code>true</code> if the initial method is static.
+	 */
 	public boolean isStatic() {
 		return TranslatorUtils.isStatic(mi.getAccessFlags());
 	}
@@ -190,6 +196,7 @@ public class MethodWrapper {
 		
 		log("Entering initRanges()%n");
 		paramTypes = LabelUtils.getParamTypes(methodDesc);
+		log("paramTypes: %s%n", paramTypes);
 		
 		// Finds annotations
 		ClassFile cf = mi.getClassFile();
@@ -208,7 +215,9 @@ public class MethodWrapper {
 			log("(%d) param: %s%n", i, param);
 			paramName = (lvtEntries == null) 
 				? null 
-				: TranslatorUtils.getConstantUtf8(cp, lvtEntries[i].getNameIndex());
+				: TranslatorUtils
+				.getConstantUtf8(cp, lvtEntries[isStatic() ? i : i+1].getNameIndex());
+			log("\tparamName: %s%n", paramName);
 			minmax = AnnotationUtils.getMinMax(annotatedRange, cf, paramName, i);
 			if (minmax != null) {
 				ranges.put(i, new Range(minmax));
@@ -217,7 +226,7 @@ public class MethodWrapper {
 				if (bits != null) {
 					ranges.put(i, new Range(bits));
 				} else {
-					log("No annotaion found%n");
+					log("No annotations found%n");
 				}
 			}
 			
@@ -255,10 +264,36 @@ public class MethodWrapper {
 		throw new IllegalArgumentException(s);
 	}
 	
+//	private Module wrapDeterministic(int bits) throws InvalidByteCodeException {
+//		
+//	}
+	
+	private String createInteger(Module init, String from) {
+		// Ensures the stack depth to three
+		init.ensureMaxStack(3);
+		
+		String to = getFreshLabel();
+		ClassTranslator ict = translator.getClassTranslator("java/lang/Integer");
+		if (ict == null) {
+			System.err.println("Fatal error: java/lang/Integer not found");
+		}
+		ExprSemiring d = new ExprSemiring(
+				ExprType.NEW, 
+				new ExprSemiring.New(
+						ict.getId(), 
+						translator.getObjectBaseId() + ict.size()));
+		init.addRule(from, d, to);
+		
+		from = to; to = getFreshLabel();
+		d = new ExprSemiring(DUP, ExprSemiring.DupType.DUP);
+		init.addRule(from, d, to);
+		
+		return to;
+	}
+	
 	/**
 	 * Wraps the selected module where the analysis should start with
 	 * non-deterministic arguments.
-	 * 
 	 * 
 	 * @param bits
 	 * @param nondet
@@ -312,27 +347,7 @@ public class MethodWrapper {
 			
 			// Handles java/lang/Integer as parameters
 			if (param.equals("Ljava/lang/Integer;")) {
-				
-				// Ensures the stack depth to three
-				init.ensureMaxStack(3);
-				
-				to = getFreshLabel();
-				ClassTranslator ict = translator.getClassTranslator("java/lang/Integer");
-				if (ict == null) {
-					System.err.println("Fatal error: java/lang/Integer not found");
-				}
-				d = new ExprSemiring(
-						ExprType.NEW, 
-						new ExprSemiring.New(
-								ict.getId(), 
-								translator.getObjectBaseId() + ict.size()));
-				init.addRule(from, d, to);
-				
-				from = to; to = getFreshLabel();
-				d = new ExprSemiring(DUP, ExprSemiring.DupType.DUP);
-				init.addRule(from, d, to);
-				
-				from = to;
+				from = createInteger(init, from);
 			}
 			
 			to = getFreshLabel();
@@ -423,15 +438,18 @@ public class MethodWrapper {
 				lvcount += 3;
 				
 				// Gets max value of array elements
-				int max;
+				int min, max;
 				if (range != null) {
+					min = range.min;
 					max = range.max;
 				} else {
-					max = (int) Math.pow(2, bits-1) - 1;
-					if (max == 0) max = 1;
+					min = (bits == 1) ? 0 : -(1 << (bits - 1));
+					max = (bits == 1) ? 1 : 1 << (bits - 1);
 				}
+				amin.put(i, min);
 				amax.put(i, max);
 				
+				// FIXME
 				from = to; to = getFreshLabel();
 				init.addRule(from, HEAPRESET, to);
 				
@@ -440,13 +458,6 @@ public class MethodWrapper {
 				
 				// Pushes the min value of array elements
 				from = to; to = getFreshLabel();
-				int min;
-				if (range != null) {
-					min = range.min;
-				} else {
-					min = (int) -Math.pow(2, bits-1);
-					if (min == -1) min = 0;
-				}
 				init.addRule(from, 
 						NEWARRAY, new ExprSemiring.Newarray(new ExprSemiring.Value(CategoryType.ONE, min)), 
 						to);
@@ -604,7 +615,7 @@ public class MethodWrapper {
 				init.addRule(from , LOAD, new Local(CategoryType.ONE, lv.get(i) + 3), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, 0), to);
+				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, amin.get(i)), to);
 				
 				from = to; to = getFreshLabel();
 				init.addRule(from, ARRAYSTORE, category, to);
@@ -690,7 +701,10 @@ public class MethodWrapper {
 		Translator.log(msg, args);
 	}
 	
-	private class Range {
+	/**
+	 * Variable range.
+	 */
+	protected static class Range {
 		
 		int bits = -1;
 		int min;
@@ -715,13 +729,12 @@ public class MethodWrapper {
 		}
 		
 		/**
-		 * max - min + 1
+		 * max + 1
 		 * 
 		 * @return
 		 */
 		long size() {
-			
-			return max - min + 1;
+			return max + 1;
 		}
 		
 		/**

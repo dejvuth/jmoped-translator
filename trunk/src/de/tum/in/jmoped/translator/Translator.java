@@ -193,21 +193,27 @@ public class Translator {
 		this.tbound = tbound;
 		this.symbolic = symbolic;
 		
-		// Calculates heap size
+		// Calculates default heap size
 		long[] heap = new long[heapSize];
-		Arrays.fill(heap, (long) Math.pow(2, bits));
-		long[] initheap = init.estimateHeapSizes(bits);
-		if (initheap != null) {
-			if (heapSize < initheap.length + 2) {
-				String s = String.format(
-						"The heap size is too small for the specified range(s). " +
-						"A heap of size at least %d is required."
-						, initheap.length + 2);
-				throw new IllegalArgumentException(s);
+		long range = 1 << bits;
+		Arrays.fill(heap, range);
+		heap[0] = 2;
+		
+		// Tries to reduce the heap size
+		if (nondet) {
+			long[] initheap = init.estimateHeapSizes(bits);
+			if (initheap != null) {
+				if (heapSize < initheap.length + 2) {
+					String s = String.format(
+							"The heap size is too small for the specified range(s). " +
+							"A heap of size at least %d is required."
+							, initheap.length + 2);
+					throw new IllegalArgumentException(s);
+				}
+				System.arraycopy(initheap, 0, heap, 1, initheap.length);
 			}
-			System.arraycopy(initheap, 0, heap, 1, initheap.length);
+			info("Heap: %s%n", Arrays.toString(heap));
 		}
-		log("Heap: %s%n", Arrays.toString(heap));
 		
 		// Global vars
 		ArrayList<Variable> gv = new ArrayList<Variable>();
