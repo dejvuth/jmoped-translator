@@ -22,6 +22,8 @@ import org.gjt.jclasslib.structures.ClassFile;
 import org.gjt.jclasslib.structures.InvalidByteCodeException;
 import org.gjt.jclasslib.structures.MethodInfo;
 import org.gjt.jclasslib.structures.attributes.CodeAttribute;
+import org.gjt.jclasslib.structures.attributes.ExceptionTableEntry;
+import org.gjt.jclasslib.structures.constants.ConstantClassInfo;
 
 import de.tum.in.jmoped.translator.stub.StubManager;
 import de.tum.in.jmoped.underbone.LabelUtils;
@@ -217,6 +219,7 @@ public class Translator {
 		
 		// Global vars
 		ArrayList<Variable> gv = new ArrayList<Variable>();
+		gv.add(new Variable(INT, Remopla.e, bits));
 		for (ClassTranslator coll : included.values()) {
 			
 			/*
@@ -413,6 +416,46 @@ public class Translator {
 		}
 		
 		return classes;
+	}
+	
+	public Set<Integer> getCastableIds(String className) {
+		
+		log("\tclassName: %s%n", className);
+		ClassTranslator ct = getClassTranslator(className);
+		
+		Set<Integer> set = new HashSet<Integer>();
+		
+		// Adds ids of all subs
+		Set<ClassTranslator> subs = ct.getDescendantClasses();
+		for (ClassTranslator sub : subs)
+			set.add(sub.getId());
+	
+		if (!ct.isArrayType()) {
+			// Adds ids of all implementers
+			for (ClassTranslator imp : getImplementers(className))
+				set.add(imp.getId());
+		}
+		
+		// In case of array
+		int dim = TranslatorUtils.countDims(className);
+		if (dim > 0) {
+			ct = getClassTranslator(TranslatorUtils.removeArrayPrefix(className));
+			if (ct != null) {
+				
+				// Gets all subs of the array internal
+				subs = ct.getDescendantClasses();
+				
+				// For each sub, adds the id of the array type of the sub
+				for (ClassTranslator sub : subs) {
+					ct = getClassTranslator(
+							TranslatorUtils.insertArrayType(sub.getName(), dim));
+					if (ct != null)
+						set.add(ct.getId());
+				}
+			}
+		}
+		
+		return set;
 	}
 	
 	public MethodArgument[] getMethodArguments(List<RawArgument> raws, List<Float> floats) {
@@ -641,6 +684,7 @@ public class Translator {
 		ClassFile cf = collection.getClassFile();
 		MethodInfo[] methods = cf.getMethods();
 		if (methods == null) return;
+		CPInfo[] cp = cf.getConstantPool();
 		for (int i = 0; i < methods.length; i++) {
 			
 			// Includes all classes in parameters
@@ -657,13 +701,29 @@ public class Translator {
 				}
 			}
 			
+			// Finds code attribute
 			CodeAttribute code = (CodeAttribute) methods[i].findAttribute(CodeAttribute.class);
 			if (code == null) return;
 			
+			// Creates new module maker
 			ModuleMaker module = new MethodTranslator(methods[i]);
 			collection.add(module);
 			
-			CPInfo[] cp = cf.getConstantPool();
+			// Goes through exception table
+			ExceptionTableEntry[] etable = code.getExceptionTable();
+			if (etable != null) {
+				for (ExceptionTableEntry e : etable) {
+					ConstantClassInfo cci = (ConstantClassInfo) cp[e.getCatchType()];
+					if (cci == null) {
+						log("ConstantClassInfo at entry %d not found.%n", e.getCatchType());
+						continue;
+					}
+					includeAllReachableClasses(StubManager.removeStub(cci.getName()));
+				}
+			}
+			
+			// Goes through each instruction
+			
 			List<AbstractInstruction> ainstList = 
 				(List<AbstractInstruction>) ByteCodeReader.readByteCode(code.getCode());
 			for (AbstractInstruction ainst : ainstList) {

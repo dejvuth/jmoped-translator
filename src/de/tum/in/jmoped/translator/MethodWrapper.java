@@ -15,6 +15,7 @@ import org.gjt.jclasslib.structures.elementvalues.ElementValue;
 import de.tum.in.jmoped.annotation.AnnotationUtils;
 import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
 import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
+import de.tum.in.jmoped.underbone.ExprSemiring.JumpType;
 import de.tum.in.jmoped.underbone.ExprSemiring.Local;
 import de.tum.in.jmoped.underbone.ExprSemiring;
 import de.tum.in.jmoped.underbone.ExprType;
@@ -393,7 +394,7 @@ public class MethodWrapper {
 				// Jumps forwards and remembers the jumped label
 				from = to; to = getFreshLabel();
 				flabels.push(to);
-				init.addRule(from, ONE, to);
+				init.addRule(from, JUMP, JumpType.ONE, to);
 				
 				// Updates labels and remembers backwards jump label 
 				// (the next one after goto)
@@ -472,7 +473,7 @@ public class MethodWrapper {
 				init.addRule(from, STORE, new Local(CategoryType.ONE, lv.get(i) + 2), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, ONE, to);
+				init.addRule(from, JUMP, JumpType.ONE, to);
 				flabels.push(to);
 				
 				to = getFreshLabel();
@@ -563,7 +564,7 @@ public class MethodWrapper {
 				
 				from = to; to = getFreshLabel();
 				String l64 = to;
-				init.addRule(from, ONE, to);
+				init.addRule(from, JUMP, JumpType.ONE, to);
 				
 				from = getFreshLabel(); to = getFreshLabel();
 				String l33 = from;
@@ -606,7 +607,7 @@ public class MethodWrapper {
 				init.addRule(from, ARRAYSTORE, category, to);
 				
 				from = to; to = flabels.peek();
-				init.addRule(from, ONE, to);
+				init.addRule(from, JUMP, JumpType.ONE, to);
 				
 				from = l51; to = getFreshLabel();
 				init.addRule(from, LOAD, new Local(CategoryType.ONE, lv.get(i) + 1), to);
