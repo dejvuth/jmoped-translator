@@ -15,12 +15,15 @@ import org.gjt.jclasslib.bytecode.Opcodes;
 import org.gjt.jclasslib.bytecode.TableSwitchInstruction;
 import org.gjt.jclasslib.io.ByteCodeReader;
 import org.gjt.jclasslib.structures.AccessFlags;
+import org.gjt.jclasslib.structures.AttributeInfo;
 import org.gjt.jclasslib.structures.CPInfo;
 import org.gjt.jclasslib.structures.InvalidByteCodeException;
 import org.gjt.jclasslib.structures.MethodInfo;
 import org.gjt.jclasslib.structures.attributes.CodeAttribute;
+import org.gjt.jclasslib.structures.attributes.ExceptionTableEntry;
 import org.gjt.jclasslib.structures.attributes.LineNumberTableAttribute;
 import org.gjt.jclasslib.structures.attributes.LineNumberTableEntry;
+import org.gjt.jclasslib.structures.constants.ConstantClassInfo;
 
 import de.tum.in.jmoped.translator.stub.Bypasser;
 import de.tum.in.jmoped.translator.stub.StubManager;
@@ -28,7 +31,9 @@ import de.tum.in.jmoped.underbone.ExprSemiring.ArithType;
 import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
 import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
 import de.tum.in.jmoped.underbone.ExprSemiring.If;
+import de.tum.in.jmoped.underbone.ExprSemiring.JumpType;
 import de.tum.in.jmoped.underbone.ExprSemiring.Local;
+import de.tum.in.jmoped.underbone.ExprSemiring.Return;
 import de.tum.in.jmoped.underbone.ExprSemiring;
 import de.tum.in.jmoped.underbone.LabelUtils;
 import de.tum.in.jmoped.underbone.Remopla;
@@ -94,10 +99,20 @@ public class MethodTranslator implements ModuleMaker {
 				StubManager.removeStub(methodInfo.getClassFile().getThisClassName()), 
 				methodInfo.getName(), 
 				StubManager.removeStub(methodInfo.getDescriptor()));
-		codeAttr = (CodeAttribute) methodInfo.findAttribute(CodeAttribute.class);
+		
+		// Finds the code attribute
+		AttributeInfo ai = methodInfo.findAttribute(CodeAttribute.class);
+		if (ai == null)
+			throw new TranslatorError("Bytecodes for %s not found.", name);
+		codeAttr = (CodeAttribute) ai;
+		
+		// Finds the bytecodes
 		ainstList = (List<AbstractInstruction>) ByteCodeReader.readByteCode(codeAttr.getCode());
-		lineTable = ((LineNumberTableAttribute) codeAttr.findAttribute(LineNumberTableAttribute.class))
-				.getLineNumberTable();
+		
+		// Finds the line table
+		ai = codeAttr.findAttribute(LineNumberTableAttribute.class);
+		if (ai != null)
+			lineTable = ((LineNumberTableAttribute) ai).getLineNumberTable();
 	}
 	
 	/**
@@ -167,6 +182,30 @@ public class MethodTranslator implements ModuleMaker {
 		return (method.getAccessFlags() & AccessFlags.ACC_STATIC) != 0;
 	}
 	
+	/**
+	 * Gets the the source line that corresponds to the bytecode instruction
+	 * at <code>offset</code>. This is only possible when the source was
+	 * compiled with in the debug mode. The method returns -1 if not found.
+	 * 
+	 * @param offset the bytecode offset.
+	 * @return the source line.
+	 */
+	int getSourceLine(int offset) {
+		
+		if (lineTable == null)
+			return -1;
+		
+		for (int i = 0; i < lineTable.length; i++) {
+			
+			if (offset >= lineTable[i].getStartPc()) {
+				if (i == lineTable.length-1 || lineTable[i+1].getStartPc() > offset)
+					return lineTable[i].getLineNumber();
+			}
+		}
+		
+		return -1;
+	}
+	
 	private String nextLabel(int i) {
 		
 		return TranslatorUtils.formatName(name, ainstList.get(i+1).getOffset());
@@ -174,8 +213,6 @@ public class MethodTranslator implements ModuleMaker {
 	
 	/**
 	 * Makes a Remopla module from this method.
-	 * 
-	 * @throws InvalidByteCodeException 
 	 */
 	public Module make(Translator translator) {
 		
@@ -217,7 +254,7 @@ public class MethodTranslator implements ModuleMaker {
 				
 				// <p, name0> -> <p, label> (ONE, (global, NE))
 				module.addRule(label,
-						new ExprSemiring(ONE, 0, new Condition(ConditionType.ONE, superName)), 
+						new ExprSemiring(JUMP, JumpType.ONE, new Condition(ConditionType.ONE, superName)), 
 						next);
 				label = next;
 			}
@@ -234,6 +271,10 @@ public class MethodTranslator implements ModuleMaker {
 			Translator.log("Making %s: %s%n", label, d);
 			
 			switch (ainst.getOpcode()) {
+			
+			case Opcodes.OPCODE_ATHROW:
+				athrow(translator, d, label, ainst.getOffset(), cp);
+				break;
 			
 			case Opcodes.OPCODE_AALOAD:
 			case Opcodes.OPCODE_BALOAD:
@@ -337,7 +378,7 @@ public class MethodTranslator implements ModuleMaker {
 				break;
 				
 			case Opcodes.OPCODE_NEW:
-				if (d.type == ONE) {
+				if (d.type == JUMP) {
 					String alabel = LabelUtils.formatAssertionName(nextLabel(i));
 					module.addRule(label, d, alabel);
 					module.addRule(alabel, ERROR, alabel);
@@ -357,20 +398,21 @@ public class MethodTranslator implements ModuleMaker {
 			
 			case Opcodes.OPCODE_RETURN:
 			case Opcodes.OPCODE_ARETURN:
-			case Opcodes.OPCODE_ATHROW:
+//			case Opcodes.OPCODE_ATHROW:
 			case Opcodes.OPCODE_DRETURN:
 			case Opcodes.OPCODE_FRETURN:
 			case Opcodes.OPCODE_IRETURN:
 			case Opcodes.OPCODE_LRETURN: {
-				if (!translator.multithreading() || !isSynchronized()) {
-					module.addRule(label, d);
-					break;
-				}
-				String label1 = getFreshReturnLabel();
-				String label2 = getFreshReturnLabel();
-				module.addRule(label, new ExprSemiring(LOAD, new Local(CategoryType.ONE, 0)), label1);
-				module.addSharedRule(label1, new ExprSemiring(MONITOREXIT), label2);
-				module.addRule(label2, d);
+//				if (!translator.multithreading() || !isSynchronized()) {
+//					module.addRule(label, d);
+//					break;
+//				}
+//				String label1 = getFreshReturnLabel();
+//				String label2 = getFreshReturnLabel();
+//				module.addRule(label, new ExprSemiring(LOAD, new Local(CategoryType.ONE, 0)), label1);
+//				module.addSharedRule(label1, new ExprSemiring(MONITOREXIT), label2);
+//				module.addRule(label2, d);
+				returnExpr(translator, d, label);
 				break;
 			}
 			
@@ -385,6 +427,70 @@ public class MethodTranslator implements ModuleMaker {
 		
 		Translator.log("%n*****************%n", name);
 		return module;
+	}
+	
+	private void athrow(Translator translator, ExprSemiring d,
+			String label, int offset, CPInfo[] cp) {
+		
+		// Gets the exception table
+		ExceptionTableEntry[] etable = codeAttr.getExceptionTable();
+		if (etable == null) {
+			// Propagates exceptions 
+			String label1 = getFreshReturnLabel();
+			module.addRule(label, new ExprSemiring(
+					GLOBALSTORE, new ExprSemiring.Field(CategoryType.ONE, Remopla.e)),
+					label1);
+			
+			returnExpr(translator, d, label1);
+			return;
+		}
+		
+		Set<Integer> handled = new HashSet<Integer>();
+		for (ExceptionTableEntry e : etable) {
+			
+			// Continues if e is not in the scope
+			if (offset < e.getStartPc() || offset >= e.getEndPc())
+				continue;
+			
+			// Finds the catch class
+			ConstantClassInfo cci = (ConstantClassInfo) cp[e.getCatchType()];
+			if (cci == null) {
+				log("ConstantClassInfo at entry %d not found.%n", e.getCatchType());
+				continue;
+			}
+			
+			// Gets all candidates
+			Set<Integer> candidates = null;
+			try {
+				candidates = translator.getCastableIds(
+						StubManager.removeStub(cci.getName()));
+			} catch (InvalidByteCodeException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			
+			// Adds a rule
+			candidates.removeAll(handled);
+			Condition cond = new Condition(
+					ConditionType.CONTAINS, candidates);
+			module.addRule(label, new ExprSemiring(JUMP, JumpType.THROW, cond), 
+					TranslatorUtils.formatName(name, e.getHandlerPc()));
+			
+			// Updates handled
+			handled.addAll(candidates);	
+		}
+		
+		// Propagates exceptions if not handled
+		Condition cond = new Condition(ConditionType.NOTCONTAINS, handled);
+		String label1 = getFreshReturnLabel();
+		module.addRule(label, new ExprSemiring(JUMP, JumpType.ONE, cond), label1);
+		
+		String label2 = getFreshReturnLabel();
+		module.addRule(label1, new ExprSemiring(
+				GLOBALSTORE, new ExprSemiring.Field(CategoryType.ONE, Remopla.e)),
+				label2);
+		
+		returnExpr(translator, d, label2);
 	}
 	
 	private void array(Translator translator, ExprSemiring d,
@@ -832,7 +938,7 @@ public class MethodTranslator implements ModuleMaker {
 			String label, String nextlabel) {
 		
 		String[] called = (String[]) d.value;
-		Translator.log("\tinvokespecial: %s%n", Arrays.toString(called));
+		log("\tinvokespecial: %s%n", Arrays.toString(called));
 		
 		// Bypasses if the translator doesn't include the class
 		ClassTranslator coll = translator.getClassTranslator(called[0]);
@@ -875,7 +981,7 @@ public class MethodTranslator implements ModuleMaker {
 				module.addSharedRule(freshlabel, new ExprSemiring(WAITRETURN), nextlabel);
 			} else {
 				module.addRule(label, new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), freshlabel);
-				module.addRule(freshlabel, new ExprSemiring(ONE), freshlabel);
+				module.addRule(freshlabel, new ExprSemiring(JUMP, JumpType.ONE), freshlabel);
 			}
 			return true;
 		}
@@ -1106,6 +1212,20 @@ public class MethodTranslator implements ModuleMaker {
 				TranslatorUtils.formatName(name, offset + inst.getDefaultOffset()));
 	}
 	
+	private void returnExpr(Translator translator, ExprSemiring d, 
+			String label) {
+		if (!translator.multithreading() || !isSynchronized()) {
+			module.addRule(label, d);
+			return;
+		}
+		String label1 = getFreshReturnLabel();
+		String label2 = getFreshReturnLabel();
+		module.addRule(label, new ExprSemiring(LOAD, new Local(CategoryType.ONE, 0)), label1);
+		module.addSharedRule(label1, new ExprSemiring(MONITOREXIT), label2);
+		module.addRule(label2, d);
+		return;
+	}
+	
 	/**
 	 * Recursively goes up in the object hierarchy and returns the first class
 	 * that has the field specified by fieldName.
@@ -1222,19 +1342,6 @@ public class MethodTranslator implements ModuleMaker {
 		}
 		
 		throw new IllegalArgumentException("Illegal opcode: " + opcode);
-	}
-	
-	public int getSourceLine(int offset) {
-		
-		for (int i = 0; i < lineTable.length; i++) {
-			
-			if (offset >= lineTable[i].getStartPc()) {
-				if (i == lineTable.length-1 || lineTable[i+1].getStartPc() > offset)
-					return lineTable[i].getLineNumber();
-			}
-		}
-		
-		return -1;
 	}
 	
 	public static String getClinitName(String className) {

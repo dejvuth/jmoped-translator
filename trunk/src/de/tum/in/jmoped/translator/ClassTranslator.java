@@ -3,6 +3,7 @@ package de.tum.in.jmoped.translator;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 import org.gjt.jclasslib.structures.AccessFlags;
 import org.gjt.jclasslib.structures.ClassFile;
@@ -58,9 +59,11 @@ public class ClassTranslator {
 	protected String superClass;
 	
 	/**
-	 * Set of subclasses.
+	 * Set of direct subclasses.
 	 */
 	protected HashSet<ClassTranslator> subClasses;
+	
+	protected HashSet<ClassTranslator> allSubClasses;
 	
 	/**
 	 * Implementing interfaces.
@@ -266,13 +269,35 @@ public class ClassTranslator {
 	}
 	
 	/**
-	 * Gets all known subclasses. The method returns <code>null</code> if
+	 * Gets all known direct subclasses. The method returns <code>null</code> if
 	 * there is none.
 	 * 
 	 * @return the set of subclasses.
 	 */
 	public HashSet<ClassTranslator> getSubClasses() {
 		return subClasses;
+	}
+	
+	private static void fillAllSubClasses(Set<ClassTranslator> set, ClassTranslator ct) {
+		
+		// Adds this ct
+		set.add(ct);
+		
+		// Adds all sub cts
+		Set<ClassTranslator> subs = ct.getSubClasses();
+		if (subs == null) return;
+		for (ClassTranslator sub : subs) {
+			fillAllSubClasses(set, sub);
+		}
+	}
+	
+	public HashSet<ClassTranslator> getDescendantClasses() {
+		if (allSubClasses != null)
+			return allSubClasses;
+		
+		allSubClasses = new HashSet<ClassTranslator>();
+		fillAllSubClasses(allSubClasses, this);
+		return allSubClasses;
 	}
 	
 	public String[] getInterfaces() {

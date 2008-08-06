@@ -40,6 +40,7 @@ public class StubManager {
 		stubs.add("java/lang/Integer");
 		stubs.add("java/lang/InterruptedException");
 		stubs.add("java/lang/Long");
+		stubs.add("java/lang/NullPointerException");
 		stubs.add("java/lang/Number");
 		stubs.add("java/lang/RuntimeException");
 		stubs.add("java/lang/String");

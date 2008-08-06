@@ -19,7 +19,9 @@ import org.gjt.jclasslib.structures.constants.ConstantUtf8Info;
 import de.tum.in.jmoped.underbone.ExprSemiring.ArithType;
 import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
 import de.tum.in.jmoped.underbone.ExprSemiring.If;
+import de.tum.in.jmoped.underbone.ExprSemiring.JumpType;
 import de.tum.in.jmoped.underbone.ExprSemiring.Local;
+import de.tum.in.jmoped.underbone.ExprSemiring.Return;
 import de.tum.in.jmoped.underbone.ExprSemiring.Unaryop;
 import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
 import de.tum.in.jmoped.underbone.ExprSemiring;
@@ -73,7 +75,8 @@ public class InstructionTranslator {
 					"[L" + TranslatorUtils.resolveClassName(cp, ainst) + ";", 1);
 			
 		case Opcodes.OPCODE_ARETURN:
-			return new ExprSemiring(RETURN, new ExprSemiring.Return(true, CategoryType.ONE));
+			return new ExprSemiring(RETURN, 
+					new Return(Return.Type.SOMETHING, CategoryType.ONE));
 			
 		case Opcodes.OPCODE_ARRAYLENGTH:
 			return new ExprSemiring(ARRAYLENGTH);
@@ -89,9 +92,8 @@ public class InstructionTranslator {
 			return new ExprSemiring(STORE, 
 					new Local(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_ASTORE_0));
 			
-		// TODO
 		case Opcodes.OPCODE_ATHROW:
-			return new ExprSemiring(RETURN, new ExprSemiring.Return(false));
+			return new ExprSemiring(RETURN, new Return(Return.Type.VOID));
 			
 		case Opcodes.OPCODE_BALOAD:
 			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
@@ -165,7 +167,8 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, ArithType.FREM, CategoryType.TWO);
 			
 		case Opcodes.OPCODE_DRETURN:
-			return new ExprSemiring(RETURN, new ExprSemiring.Return(true, CategoryType.TWO));
+			return new ExprSemiring(RETURN, 
+					new Return(Return.Type.SOMETHING, CategoryType.TWO));
 			
 		case Opcodes.OPCODE_DSTORE:
 			return new ExprSemiring(STORE, 
@@ -254,7 +257,8 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, ArithType.FREM, CategoryType.ONE);
 			
 		case Opcodes.OPCODE_FRETURN:
-			return new ExprSemiring(RETURN, new ExprSemiring.Return(true, CategoryType.ONE));
+			return new ExprSemiring(RETURN, 
+					new Return(Return.Type.SOMETHING, CategoryType.ONE));
 			
 		case Opcodes.OPCODE_FSTORE:
 			return new ExprSemiring(STORE, 
@@ -278,11 +282,11 @@ public class InstructionTranslator {
 			return getstatic(cp, ainst);
 			
 		case Opcodes.OPCODE_GOTO:
-			return new ExprSemiring(ExprType.ONE);
+			return new ExprSemiring(JUMP, JumpType.ONE);
 			
 		case Opcodes.OPCODE_I2B:
 		case Opcodes.OPCODE_I2C:
-			return new ExprSemiring(ONE);
+			return new ExprSemiring(JUMP, JumpType.ONE);
 			
 		case Opcodes.OPCODE_I2D:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2D));
@@ -294,7 +298,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2L));
 			
 		case Opcodes.OPCODE_I2S:
-			return new ExprSemiring(ONE);
+			return new ExprSemiring(JUMP, JumpType.ONE);
 			
 		case Opcodes.OPCODE_IADD:
 			return new ExprSemiring(ARITH, ArithType.ADD, CategoryType.ONE);
@@ -413,7 +417,8 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, ArithType.REM, CategoryType.ONE);
 			
 		case Opcodes.OPCODE_IRETURN:
-			return new ExprSemiring(ExprType.RETURN, new ExprSemiring.Return(true, CategoryType.ONE));
+			return new ExprSemiring(ExprType.RETURN, 
+					new Return(Return.Type.SOMETHING, CategoryType.ONE));
 			
 		case Opcodes.OPCODE_ISHL:
 			return new ExprSemiring(ARITH, ArithType.SHL, CategoryType.ONE);
@@ -500,7 +505,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.LNEG));
 			
 		case Opcodes.OPCODE_LOOKUPSWITCH:
-			return new ExprSemiring(ONE, ainst);
+			return new ExprSemiring(JUMP, ainst);
 			
 		case Opcodes.OPCODE_LOR:
 			return new ExprSemiring(ARITH, ArithType.OR, CategoryType.TWO);
@@ -509,7 +514,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, ArithType.REM, CategoryType.TWO);
 			
 		case Opcodes.OPCODE_LRETURN:
-			return new ExprSemiring(RETURN, new ExprSemiring.Return(true, CategoryType.TWO));
+			return new ExprSemiring(RETURN, new Return(Return.Type.SOMETHING, CategoryType.TWO));
 			
 		case Opcodes.OPCODE_LSHL:
 			return new ExprSemiring(ARITH, ArithType.SHL, CategoryType.TWO);
@@ -565,7 +570,7 @@ public class InstructionTranslator {
 					TranslatorUtils.getReferencedName(cp, ainst));
 			
 		case Opcodes.OPCODE_RETURN:
-			return new ExprSemiring(ExprType.RETURN, new ExprSemiring.Return(false));
+			return new ExprSemiring(ExprType.RETURN, new Return(Return.Type.VOID));
 			
 		case Opcodes.OPCODE_SALOAD:
 			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
@@ -577,10 +582,10 @@ public class InstructionTranslator {
 			return sipush(ainst);
 			
 		case Opcodes.OPCODE_TABLESWITCH:
-			return new ExprSemiring(ONE, ainst);
+			return new ExprSemiring(JUMP, ainst);
 			
 		case Opcodes.OPCODE_WIDE:
-			return new ExprSemiring(ONE);
+			return new ExprSemiring(JUMP, JumpType.ONE);
 		}
 		
 		throw new TranslatorError("Unsupported bytecode instruction: " 
@@ -594,69 +599,68 @@ public class InstructionTranslator {
 		return new ExprSemiring(ExprType.PUSH, new ExprSemiring.Value(CategoryType.ONE, b));
 	}
 	
-	private static void fillSubclasses(Translator translator, Set<ClassTranslator> set,
-			ClassTranslator ct) {
-		
-		// Adds this id
-		set.add(ct);
-		
-		// Adds all sub ids
-		Set<ClassTranslator> subs = ct.getSubClasses();
-		if (subs == null) return;
-		for (ClassTranslator sub : subs) {
-			fillSubclasses(translator, set, sub);
-		}
-	}
+//	private static void fillSubclasses(Translator translator, Set<ClassTranslator> set,
+//			ClassTranslator ct) {
+//		
+//		// Adds this id
+//		set.add(ct);
+//		
+//		// Adds all sub ids
+//		Set<ClassTranslator> subs = ct.getSubClasses();
+//		if (subs == null) return;
+//		for (ClassTranslator sub : subs) {
+//			fillSubclasses(translator, set, sub);
+//		}
+//	}
 	
-	private static Set<Integer> getCandidateTypes(Translator translator, 
-			CPInfo[] cp, AbstractInstruction ainst) {
-		
-		String className = TranslatorUtils.resolveClassName(cp, ainst);
-		ClassTranslator ct = translator.getClassTranslator(className);
-		log("\tclassName: %s%n", ct.getName());
-		
-		Set<Integer> set = new HashSet<Integer>();
-		
-		// Adds ids of all subs
-		Set<ClassTranslator> subs = new HashSet<ClassTranslator>();
-		fillSubclasses(translator, subs, ct);
-		for (ClassTranslator sub : subs)
-			set.add(sub.getId());
-	
-		if (!ct.isArrayType()) {
-			// Adds ids of all implementers
-			for (ClassTranslator imp : translator.getImplementers(className))
-				set.add(imp.getId());
-		}
-		
-		// In case of array
-		int dim = TranslatorUtils.countDims(className);
-		if (dim > 0) {
-			ct = translator.getClassTranslator(TranslatorUtils.removeArrayPrefix(className));
-			if (ct != null) {
-				
-				// Gets all subs of the array internal
-				subs = new HashSet<ClassTranslator>();
-				fillSubclasses(translator, subs, ct);
-				
-				// For each sub, adds the id of the array type of the sub
-				for (ClassTranslator sub : subs) {
-					ct = translator.getClassTranslator(
-							TranslatorUtils.insertArrayType(sub.getName(), dim));
-					if (ct != null)
-						set.add(ct.getId());
-				}
-			}
-		}
-		
-		return set;
-	}
+//	private static Set<Integer> getCandidateTypes(Translator translator, 
+//			CPInfo[] cp, AbstractInstruction ainst) {
+//		
+//		String className = TranslatorUtils.resolveClassName(cp, ainst);
+//		ClassTranslator ct = translator.getClassTranslator(className);
+//		log("\tclassName: %s%n", ct.getName());
+//		
+//		Set<Integer> set = new HashSet<Integer>();
+//		
+//		// Adds ids of all subs
+//		Set<ClassTranslator> subs = ct.getDescendantClasses();
+//		for (ClassTranslator sub : subs)
+//			set.add(sub.getId());
+//	
+//		if (!ct.isArrayType()) {
+//			// Adds ids of all implementers
+//			for (ClassTranslator imp : translator.getImplementers(className))
+//				set.add(imp.getId());
+//		}
+//		
+//		// In case of array
+//		int dim = TranslatorUtils.countDims(className);
+//		if (dim > 0) {
+//			ct = translator.getClassTranslator(TranslatorUtils.removeArrayPrefix(className));
+//			if (ct != null) {
+//				
+//				// Gets all subs of the array internal
+//				subs = ct.getDescendantClasses();
+//				
+//				// For each sub, adds the id of the array type of the sub
+//				for (ClassTranslator sub : subs) {
+//					ct = translator.getClassTranslator(
+//							TranslatorUtils.insertArrayType(sub.getName(), dim));
+//					if (ct != null)
+//						set.add(ct.getId());
+//				}
+//			}
+//		}
+//		
+//		return set;
+//	}
 	
 	private static ExprSemiring checkcast(Translator translator, CPInfo[] cp, 
 			AbstractInstruction ainst) {
 
 		// Gets all candidates
-		Set<Integer> set = getCandidateTypes(translator, cp, ainst);
+		Set<Integer> set = translator.getCastableIds(
+				TranslatorUtils.resolveClassName(cp, ainst));
 		
 		// Null is ok, always included
 		set.add(0);
@@ -664,7 +668,7 @@ public class InstructionTranslator {
 		ExprSemiring.Condition cond = new ExprSemiring.Condition(
 				ExprSemiring.Condition.ConditionType.CONTAINS, 
 				set);
-		return new ExprSemiring(ONE, null, cond);
+		return new ExprSemiring(JUMP, JumpType.ONE, cond);
 	}
 	
 	private static ExprSemiring getstatic(CPInfo[] cp, AbstractInstruction ainst) {
@@ -694,7 +698,8 @@ public class InstructionTranslator {
 			AbstractInstruction ainst) {
 
 		// Gets all candidates
-		Set<Integer> set = getCandidateTypes(translator, cp, ainst);
+		Set<Integer> set = translator.getCastableIds(
+				TranslatorUtils.resolveClassName(cp, ainst));
 		
 		return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.CONTAINS, set));
 	}
@@ -804,7 +809,7 @@ public class InstructionTranslator {
 		
 		// Bypasses the AssertionError class
 		if (className.equals("java/lang/AssertionError"))
-			return new ExprSemiring(ExprType.ONE);
+			return new ExprSemiring(JUMP, JumpType.ONE);
 		
 		return new ExprSemiring(ExprType.NEW, className);
 	}
