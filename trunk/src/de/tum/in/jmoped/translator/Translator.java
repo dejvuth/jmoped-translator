@@ -108,6 +108,7 @@ public class Translator {
 			String methodName, String methodDesc) 
 			throws InvalidByteCodeException, IOException {
 		
+		log("searchPaths: %s%n", Arrays.toString(searchPaths));
 		this.searchPaths = searchPaths;
 		
 		// Includes relevant methods
@@ -418,12 +419,21 @@ public class Translator {
 		return classes;
 	}
 	
+	/**
+	 * Gets all class ids that are castable from the class specified by
+	 * <code>className</code>.
+	 * 
+	 * @param className the class name.
+	 * @return the set of class ids.
+	 */
 	public Set<Integer> getCastableIds(String className) {
+		
+		Set<Integer> set = new HashSet<Integer>();
 		
 		log("\tclassName: %s%n", className);
 		ClassTranslator ct = getClassTranslator(className);
-		
-		Set<Integer> set = new HashSet<Integer>();
+		if (ct == null)
+			return set;
 		
 		// Adds ids of all subs
 		Set<ClassTranslator> subs = ct.getDescendantClasses();
@@ -854,13 +864,8 @@ public class Translator {
 	}
 	
 	private static final String[] ignoredPackages = new String[] { 
-		"java/io", "org/gjt/jclasslib", "sun"/*, "de/tum/in/jmoped/translator"*/ };
-	
-//	static {
-//		ignoredPackages = new HashSet<String>();
-//		ignoredPackages.add("java/awt");
-//		ignoredPackages.add("java/io");
-//	}
+		"java/io", "org/gjt/jclasslib", "sun", "java/net", "java/nio", "java/util/logging"
+		/*, "de/tum/in/jmoped/translator"*/ };
 	
 	private boolean isPackageIgnored(String className) {
 		

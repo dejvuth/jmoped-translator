@@ -282,6 +282,7 @@ public class InstructionTranslator {
 			return getstatic(cp, ainst);
 			
 		case Opcodes.OPCODE_GOTO:
+		case Opcodes.OPCODE_GOTO_W:
 			return new ExprSemiring(JUMP, JumpType.ONE);
 			
 		case Opcodes.OPCODE_I2B:
@@ -446,6 +447,10 @@ public class InstructionTranslator {
 		case Opcodes.OPCODE_IXOR:
 			return new ExprSemiring(ARITH, ArithType.XOR, CategoryType.ONE);
 			
+		case Opcodes.OPCODE_JSR:
+		case Opcodes.OPCODE_JSR_W:
+			return new ExprSemiring(PUSH, JumpType.ONE);
+			
 		case Opcodes.OPCODE_L2D:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2D));
 			
@@ -561,6 +566,9 @@ public class InstructionTranslator {
 		case Opcodes.OPCODE_POP:
 			return new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0));
 			
+		case Opcodes.OPCODE_POP2:
+			return new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(2, 0));
+			
 		case Opcodes.OPCODE_PUTFIELD:
 			return new ExprSemiring(FIELDSTORE, 
 					TranslatorUtils.getReferencedName(cp, ainst));	
@@ -568,6 +576,10 @@ public class InstructionTranslator {
 		case Opcodes.OPCODE_PUTSTATIC:
 			return new ExprSemiring(GLOBALSTORE, //FieldTranslator.formatName(
 					TranslatorUtils.getReferencedName(cp, ainst));
+			
+		case Opcodes.OPCODE_RET:
+			return new ExprSemiring(LOAD, 
+					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_RETURN:
 			return new ExprSemiring(ExprType.RETURN, new Return(Return.Type.VOID));
@@ -758,6 +770,9 @@ public class InstructionTranslator {
 			int index = ((ConstantClassInfo) ce).getNameIndex();
 			String string = ((ConstantUtf8Info) cp[index]).getString();
 			ClassTranslator ct = translator.getClassTranslator(string);
+			if (ct == null)	// FIXME
+				return new ExprSemiring(PUSH, new ExprSemiring.Value(1));
+			
 			return new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, ct.getId()));
 		}
 			

@@ -1,11 +1,17 @@
 package de.tum.in.jmoped.translator.stub.de.tum.in.jmoped.underbone;
 
+import java.util.Set;
+
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDD;
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDDomain;
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDVarSet;
 import de.tum.in.jmoped.translator.stub.de.tum.in.jmoped.underbone.VarManager;
+import de.tum.in.jmoped.underbone.ExprSemiring;
+import de.tum.in.wpds.CancelMonitor;
+import de.tum.in.wpds.Sat;
+import de.tum.in.wpds.Semiring;
 
-public class BDDSemiring {
+public class BDDSemiring implements Semiring {
 	
 	VarManager manager;
 	public BDD bdd;
@@ -16,42 +22,69 @@ public class BDDSemiring {
 		this.bdd = bdd;
 	}
 
-	public BDDSemiring extend(ExprSemiring expr) {
+	public Semiring extend(Semiring a, CancelMonitor monitor) {
 		
-		if (expr.type == ExprSemiring.PUSH) {
-			return push(expr);
+		ExprSemiring A = (ExprSemiring) a;
+		if (A.type == de.tum.in.jmoped.underbone.ExprType.PUSH) {
+			return push(A);
 		}
 		
 		return null;
 	}
 	
-	private BDDSemiring push(ExprSemiring expr) {
+	private BDDSemiring push(ExprSemiring A) {
 		
-		// Gets the current value of stack pointer (sp)
-		BDDDomain spDom = manager.getStackPointerDomain();
-//		System.out.println(spDom);
-		int sp = bdd.scanVar(spDom).intValue();
+		// Gets the current value of stack pointer
+		BDDDomain spdom = manager.getStackPointerDomain();
+		int sp = bdd.scanVar(spdom).intValue();
 		BDDDomain s0dom = manager.getStackDomain(sp);
-//		System.out.println(s0dom);
 		
-		// Abstracts the sp and the stack element at sp
-		BDD cbdd = abstractVars(bdd, spDom, s0dom);
+		// Abstracts the stack
+		ExprSemiring.Value value = (ExprSemiring.Value) A.value;
+		int category = value.category.intValue();
+		BDDDomain[] sdoms = new BDDDomain[category + 1];
+		sdoms[0] = spdom;
+		sdoms[1] = s0dom;
+		if (category == 2) 
+			sdoms[2] = manager.getStackDomain(sp + 1);
+		BDD c = abstractVars(bdd, sdoms);
 		
-		// Updates the sp and the stack element at sp
-		cbdd.andWith(spDom.ithVar(sp+1));
-		if (expr.value != null) {	// null means ignored
-			
-			if (expr.aux == null) {
-				int raw = ((Integer) expr.value).intValue();
-				long value = VarManager.encode(raw, s0dom);
-				cbdd.andWith(s0dom.ithVar(value));
-			} else {	// aux not null defines a range
-				int from = (Integer) expr.aux;
-				int to = (Integer) expr.value;
-				cbdd.andWith(manager.bddRange(s0dom, from, to));
-			}	
-		}
-		return new BDDSemiring(manager, cbdd);
+		// Updates the stack
+		c.andWith(spdom.ithVar(sp + category));
+		c.andWith(bddOf(value, s0dom));
+		if (category == 2)
+			c.andWith(sdoms[2].ithVar(0));
+		return new BDDSemiring(manager, c);
+	}
+	
+	/**
+	 * Returns the BDD with variables specified by <code>dom</code>
+	 * representing <code>value</code>.
+	 * 
+	 * @param value the value.
+	 * @param dom the BDD domain.
+	 * @return the BDD representing the value.
+	 */
+	private BDD bddOf(ExprSemiring.Value value, BDDDomain dom) {
+		
+		// All values
+		if (value.all()) {
+			return manager.getFactory().one();
+		} 
+		
+		// Deterministic values
+		if (value.deterministic()) {
+			if (value.isInteger()) {
+				return dom.ithVar(VarManager.encode(value.intValue(), dom));
+			} 
+//			else if (value.isReal()) {
+//				return dom.ithVar(manager.encode(value.floatValue(), dom));
+//			} else {	// value.isString();
+//				return dom.ithVar(manager.encode(value.stringValue(), dom));
+//			}
+		} 
+		
+		return manager.bddRange(dom, value.intValue(), value.to.intValue());
 	}
 	
 	/**
@@ -73,5 +106,95 @@ public class BDDSemiring {
 		abs.free();
 		
 		return out;
+	}
+
+	public Semiring andWith(Semiring arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring combine(Semiring arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring extendDynamic(Semiring arg0, CancelMonitor arg1) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring extendPop(Semiring arg0, CancelMonitor arg1) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring extendPush(Semiring arg0, CancelMonitor arg1) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void free() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public Semiring getEqClass(int arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring getEqRel(int arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring getGlobal() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Set<Semiring> getGlobals() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring id() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean isZero() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public Semiring lift(Semiring arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring orWith(Semiring arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Semiring restrict(Semiring arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void sliceWith(Semiring arg0, int arg1) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public String toRawString() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void updateGlobal(Semiring arg0) {
+		// TODO Auto-generated method stub
+		
 	}
 }
