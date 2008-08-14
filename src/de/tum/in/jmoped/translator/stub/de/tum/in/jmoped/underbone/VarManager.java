@@ -5,7 +5,6 @@ import java.util.Collection;
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDD;
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDDomain;
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDFactory;
-
 import de.tum.in.jmoped.underbone.Variable;
 
 public class VarManager {
@@ -17,8 +16,9 @@ public class VarManager {
 	
 	BDDDomain[] doms;
 
-	public VarManager(int bits, long[] heapSizes, Collection<Variable> g, 
-			int smax, int lvmax, int nodenum) {
+	public VarManager(String bddpackage, int nodenum, int cachesize, 
+			int bits, long[] heapSizes, Collection<Variable> g, 
+			int smax, int lvmax, int tbound, boolean lazy) {
 		
 		int size = 1;
 		for (int i = 0; i < bits; i++)

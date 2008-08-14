@@ -4,12 +4,12 @@ public class BigInteger {
 
 	long value;
 	
-	public BigInteger(int value) {
+	private BigInteger(long value) {
 		this.value = value;
 	}
 	
-	public BigInteger(long value) {
-		this.value = value;
+	public static BigInteger valueOf(long val) {
+		return new BigInteger(val);
 	}
 	
 	public int intValue() {

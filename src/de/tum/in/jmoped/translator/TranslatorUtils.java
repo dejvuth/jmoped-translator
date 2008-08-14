@@ -12,6 +12,7 @@ import java.util.jar.JarFile;
 import org.gjt.jclasslib.bytecode.AbstractInstruction;
 import org.gjt.jclasslib.bytecode.BranchInstruction;
 import org.gjt.jclasslib.bytecode.ImmediateByteInstruction;
+import org.gjt.jclasslib.bytecode.ImmediateIntInstruction;
 import org.gjt.jclasslib.bytecode.ImmediateShortInstruction;
 import org.gjt.jclasslib.bytecode.Opcodes;
 import org.gjt.jclasslib.io.ClassFileReader;
@@ -256,7 +257,7 @@ public class TranslatorUtils {
 	}
 	
 	/**
-	 * Gets the 16-bits operand that follows the instrcution.
+	 * Gets the 16-bits operand that follows the instruction.
 	 * 
 	 * @param ainst the instruction.
 	 * @return the operand.
@@ -264,6 +265,17 @@ public class TranslatorUtils {
 	public static int immediateShort(AbstractInstruction ainst) {
 		
 		return ((ImmediateShortInstruction) ainst).getImmediateShort();
+	}
+	
+	/**
+	 * Gets the 32-bits operand that follows the instruction.
+	 * 
+	 * @param ainst the instruction.
+	 * @return the operand.
+	 */
+	public static int immediateInt(AbstractInstruction ainst) {
+		
+		return ((ImmediateIntInstruction) ainst).getImmediateInt();
 	}
 	
 	public static String getNewarrayType(AbstractInstruction ainst) {

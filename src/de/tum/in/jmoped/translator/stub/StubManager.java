@@ -23,10 +23,14 @@ public class StubManager {
 		stubs.add("Stub");
 		
 		stubs.add("de/tum/in/jmoped/underbone/BDDSemiring");
-		stubs.add("de/tum/in/jmoped/underbone/ExprSemiring");
-		stubs.add("de/tum/in/jmoped/underbone/Variable");
+//		stubs.add("de/tum/in/jmoped/underbone/ExprSemiring");
+		stubs.add("de/tum/in/jmoped/underbone/ExprType");
+//		stubs.add("de/tum/in/jmoped/underbone/Variable");
 		stubs.add("de/tum/in/jmoped/underbone/VarManager");
 		
+		stubs.add("de/tum/in/wpds/Utils");
+		
+		stubs.add("java/io/IOException");
 		stubs.add("java/io/PrintStream");
 		
 		stubs.add("java/lang/AssertionError");
@@ -52,6 +56,8 @@ public class StubManager {
 		stubs.add("java/math/BigInteger");
 		
 		stubs.add("java/util/Random");
+		
+		stubs.add("java/util/logging/Logger");
 		
 		stubs.add("net/sf/javabdd/BDD");
 		stubs.add("net/sf/javabdd/BDDDomain");

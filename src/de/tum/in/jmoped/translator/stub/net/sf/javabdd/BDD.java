@@ -100,7 +100,7 @@ public class BDD {
 			value += scanVar(u, vars[i]);
 		}
 		
-		return new BigInteger(value);
+		return BigInteger.valueOf(value);
 	}
 	
 	private static int scanVar(int u, int var) {

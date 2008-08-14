@@ -3,6 +3,7 @@ package de.tum.in.jmoped.translator;
 import static de.tum.in.jmoped.underbone.ExprType.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -33,7 +34,9 @@ import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
 import de.tum.in.jmoped.underbone.ExprSemiring.If;
 import de.tum.in.jmoped.underbone.ExprSemiring.JumpType;
 import de.tum.in.jmoped.underbone.ExprSemiring.Local;
+import de.tum.in.jmoped.underbone.ExprSemiring.Poppush;
 import de.tum.in.jmoped.underbone.ExprSemiring.Return;
+import de.tum.in.jmoped.underbone.ExprSemiring.Value;
 import de.tum.in.jmoped.underbone.ExprSemiring;
 import de.tum.in.jmoped.underbone.LabelUtils;
 import de.tum.in.jmoped.underbone.Remopla;
@@ -329,9 +332,13 @@ public class MethodTranslator implements ModuleMaker {
 						new ExprSemiring(IF, new If(negate(ainst.getOpcode()))), 
 						nextLabel(i));
 				break;
+				
+			case Opcodes.OPCODE_INSTANCEOF:
+				instanceofExpr(d, label, nextLabel(i));
+				break;
 			
 			case Opcodes.OPCODE_INVOKEINTERFACE:
-				invokeinterface(translator, d, label, nextLabel(i));
+				invokeinterface(translator, d, label, nextLabel(i), ainst.getOffset(), cp);
 				break;
 				
 			case Opcodes.OPCODE_INVOKESPECIAL:
@@ -339,7 +346,7 @@ public class MethodTranslator implements ModuleMaker {
 				break;
 				
 			case Opcodes.OPCODE_INVOKESTATIC:
-				invokestatic(translator, d, label, nextLabel(i));
+				invokestatic(translator, d, label, nextLabel(i), ainst.getOffset(), cp);
 				break;
 			
 			case Opcodes.OPCODE_INVOKEVIRTUAL:
@@ -347,17 +354,23 @@ public class MethodTranslator implements ModuleMaker {
 					module.addRule(label, d, nextLabel(i));
 					break;
 				}
-				invokevirtual(translator, d, label, nextLabel(i));
+				invokevirtual(translator, d, label, nextLabel(i), ainst.getOffset(), cp);
+				break;
+				
+			case Opcodes.OPCODE_JSR:
+			case Opcodes.OPCODE_JSR_W:
+				jsr(d, label, nextLabel(i), ainst);
 				break;
 				
 			case Opcodes.OPCODE_LDC:
 			case Opcodes.OPCODE_LDC_W:
 				// Replaces Integer.MAX_VALUE
 				ExprSemiring.Value value = (ExprSemiring.Value) d.value;
-				if (translator.nondeterministic() 
-						&& value.isInteger() 
-						&& value.intValue() == Integer.MAX_VALUE) {
-					value.setValue((1 << (translator.getBits() - 1)) - 1);
+				if (translator.nondeterministic() && value.isInteger()) {
+					if (value.intValue() == Integer.MAX_VALUE)
+						value.setValue((1 << (translator.getBits() - 1)) - 1);
+					if (value.intValue() == Integer.MIN_VALUE)
+						value.setValue(-(1 << (translator.getBits() - 1)));
 				}
 				module.addRule(label, d, nextLabel(i));
 				break;
@@ -394,6 +407,10 @@ public class MethodTranslator implements ModuleMaker {
 			case Opcodes.OPCODE_NEWARRAY:
 				heapoverflow(label, NEWARRAY, d.value);
 				module.addRule(label, d, nextLabel(i));
+				break;
+				
+			case Opcodes.OPCODE_RET:
+				ret(d, label);
 				break;
 			
 			case Opcodes.OPCODE_RETURN:
@@ -481,6 +498,7 @@ public class MethodTranslator implements ModuleMaker {
 		}
 		
 		// Propagates exceptions if not handled
+		handled.add(0);
 		Condition cond = new Condition(ConditionType.NOTCONTAINS, handled);
 		String label1 = getFreshReturnLabel();
 		module.addRule(label, new ExprSemiring(JUMP, JumpType.ONE, cond), label1);
@@ -497,7 +515,8 @@ public class MethodTranslator implements ModuleMaker {
 			String label, String nextlabel) {
 		
 		int category = ((ExprSemiring.CategoryType) d.value).intValue();
-		int depth = (d.type == ExprType.ARRAYLOAD) ? category : category + 1;
+//		int depth = (d.type == ExprType.ARRAYLOAD) ? category : category + 1;
+		int depth = (d.type == ExprType.ARRAYLOAD) ? 1 : category + 1;
 		npe(label, depth);
 		
 		String error = LabelUtils.formatIoobName(label);
@@ -507,6 +526,15 @@ public class MethodTranslator implements ModuleMaker {
 		module.addRule(error, ERROR, error);
 		
 		module.addSharedRule(label, d, nextlabel);
+	}
+	
+	private void poppushfield(ExprType type, int cat, String label, String nextlabel) {
+		module.addSharedRule(label, 
+				new ExprSemiring(POPPUSH, 
+						new Poppush(
+						(type == ExprType.FIELDLOAD) ? 1 : 1 + cat, 
+						(type == ExprType.FIELDLOAD) ? cat : 0)), 
+				nextlabel);
 	}
 	
 	/**
@@ -520,19 +548,21 @@ public class MethodTranslator implements ModuleMaker {
 	private void getputfield(Translator translator, ExprSemiring d,
 			String label, String nextlabel) {
 		
-		// Adds goto NPE
-		npe(label, (d.type == ExprType.FIELDLOAD) ? 0 : 1);
-		
 		String[] ref = (String[]) d.value;
 		Translator.log("\tref: %s%n", Arrays.toString(ref));
 		String eref0 = StubManager.removeStub(ref[0]);
+		CategoryType cat = TranslatorUtils.getCategory(ref[2]);
+		
+		// Adds goto NPE
+		npe(label, (d.type == ExprType.FIELDLOAD) ? 0 : cat.intValue());
 		
 		// If the class is ignored, pushes nondeterministically
 		ClassTranslator coll = translator.getClassTranslator(eref0);
 		if (coll == null) {
-			module.addSharedRule(label, 
-					new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, 1)), 
-					nextlabel);
+//			module.addSharedRule(label, 
+//					new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, 1)), 
+//					nextlabel);
+			poppushfield(d.type, cat.intValue(), label, nextlabel);
 			return;
 		}
 		
@@ -542,39 +572,51 @@ public class MethodTranslator implements ModuleMaker {
 		HashSet<ClassTranslator> subs = coll.getSubClasses();
 		boolean hasCond = supers.size() > 1 || subs != null;
 		int baseid = translator.getObjectBaseId();
-		CategoryType category = TranslatorUtils.getCategory(ref[2]);
+		
 		
 		// Super classes and "this"
 		FieldTranslator field;
+		boolean added = false;
 		for (ClassTranslator superColl : supers) {
 			log("\tsuperColl.getName(): %s%n", superColl.getName());
 			field = superColl.getInstanceFieldTranslator(fieldName);
-//			if (field == null) {
-//				log("\tfield %s not found%n", fieldName);
-//				field = superColl.getInstanceFieldTranslator(
-//						FieldTranslator.formatName(superColl.getName(), ref[1]));
-//			}
+			if (field == null) {
+				continue;
+			}
 			Condition cond = null;
 			if (hasCond)
 				cond = new Condition(ConditionType.CONTAINS, setOf(superColl.getId()));
 			module.addSharedRule(label, 
 					new ExprSemiring(d.type, 
-							new ExprSemiring.Field(category, baseid + field.getId()), 
+							new ExprSemiring.Field(cat, baseid + field.getId()), 
 							cond), 
 					nextlabel);
+			added = true;
 		}
 		
-		// Sub classes
-		if (subs == null) return;
+		// No fields found
+		if (subs == null) {
+			if (!added) {
+				poppushfield(d.type, cat.intValue(), label, nextlabel);
+			}
+			return;
+		}
+		
+		// Subclasses
 		for (ClassTranslator subColl : subs) {
 			field = subColl.getInstanceFieldTranslator(fieldName);
+			if (field == null) continue;
 			Condition cond = new Condition(ConditionType.CONTAINS, setOf(subColl.getId()));
 			module.addSharedRule(label, 
 					new ExprSemiring(d.type, 
-							new ExprSemiring.Field(category, baseid + field.getId()), 
+							new ExprSemiring.Field(cat, baseid + field.getId()), 
 							cond), 
 					nextlabel);
+			added = true;
 		}
+		
+		if (!added)
+			poppushfield(d.type, cat.intValue(), label, nextlabel);
 	}
 	
 	/**
@@ -601,6 +643,15 @@ public class MethodTranslator implements ModuleMaker {
 		return set;
 	}
 	
+	private void poppushstatic(ExprType type, int cat, String label, String nextlabel) {
+		module.addSharedRule(label, 
+				new ExprSemiring(POPPUSH, 
+						new Poppush(
+						(type == ExprType.GLOBALLOAD) ? 0 : cat, 
+						(type == ExprType.GLOBALLOAD) ? cat : 0)), 
+				nextlabel);
+	}
+	
 	/**
 	 * Handles GETSTATIC and PUTSTATIC.
 	 * 
@@ -617,15 +668,21 @@ public class MethodTranslator implements ModuleMaker {
 		ClassTranslator coll = translator.getClassTranslator(ref[0]);
 		
 		// If the class is ignored, pushes nondeterministically
+		CategoryType cat = TranslatorUtils.getCategory(ref[2]);
 		if (coll == null) {
-			module.addRule(label, 
-					new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE)), 
-					nextlabel);
+//			module.addRule(label, 
+//					new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE)), 
+//					nextlabel);
+			poppushstatic(d.type, cat.intValue(), label, nextlabel);
 			return;
 		}
 		
 		String name = FieldTranslator.formatName(coll.getName(), ref[1]);
 		FieldTranslator field = coll.getStaticFieldTranslator(name);
+		if (field == null) {
+			poppushstatic(d.type, cat.intValue(), label, nextlabel);
+			return;
+		}
 		
 		if (field.isFinal()) {
 			if (d.type == GLOBALLOAD) {
@@ -635,7 +692,7 @@ public class MethodTranslator implements ModuleMaker {
 			}
 		}
 		
-		d.value = new ExprSemiring.Field(TranslatorUtils.getCategory(ref[2]), name);
+		d.value = new ExprSemiring.Field(cat, name);
 
 		/*
 		 * Invokes static initializer if:
@@ -672,13 +729,23 @@ public class MethodTranslator implements ModuleMaker {
 		module.addRule(r);
 	}
 	
-	private void invoke(Translator translator, String[] called, 
+	private void instanceofExpr(ExprSemiring d, String label, String nextlabel) {
+		
+		String freshlabel = getFreshReturnLabel();
+		module.addSharedRule(label, 
+				new ExprSemiring(ExprType.FIELDLOAD, 
+						new ExprSemiring.Field(CategoryType.ONE, 0)), 
+				freshlabel);
+		module.addRule(freshlabel, d, nextlabel);
+	}
+	
+	private boolean invoke(Translator translator, String[] called, 
 			String label, String nextlabel, ClassTranslator coll, int id, boolean cond) {
 		
 		// The method might not exist, if the class is abstract
 		ModuleMaker maker = coll.getModuleMaker(called[1], called[2]);
 		if (maker == null) {
-			return;
+			return false;
 		}
 		
 		int nargs = TranslatorUtils.countParams(called[2]) + 1;
@@ -716,6 +783,32 @@ public class MethodTranslator implements ModuleMaker {
 					GETRETURN, TranslatorUtils.getReturnCategory(called[2]), 
 					nextlabel);
 		}
+		
+		return true;
+	}
+	
+	private void handleException(Translator translator, String label, 
+			String nextlabel, int offset, CPInfo[] cp) {
+		
+		String n2 = getFreshReturnLabel();
+		String n3 = getFreshReturnLabel();
+		
+		// FIXME the ordering is important for toMoped()
+		
+		// [Exception] GLOBALLOAD pushes the status variable (e)
+		module.addRule(label, new ExprSemiring(GLOBALLOAD, 
+				new ExprSemiring.Field(CategoryType.ONE, Remopla.e)), n2);
+		
+		// [Exception] Continues if the status is zero
+		Condition cond = new Condition(ConditionType.CONTAINS, 
+				new HashSet<Integer>(Arrays.asList(0)));
+		module.addRule(n2, new ExprSemiring(JUMP, JumpType.ONE, cond), n3);
+		
+		// [Exception] THROW if the status non-zero
+		athrow(translator, new ExprSemiring(RETURN, new Return(Return.Type.VOID)), n2, offset, cp);
+		
+		// [Exception] Pops the status variable
+		module.addRule(n3, new ExprSemiring(POPPUSH, new Poppush(1, 0)), nextlabel);
 	}
 	
 	/**
@@ -727,7 +820,7 @@ public class MethodTranslator implements ModuleMaker {
 	 * @param nextlabel the next label.
 	 */
 	private void invokeinterface(Translator translator, ExprSemiring d, 
-			String label, String nextlabel) {
+			String label, String nextlabel, int offset, CPInfo[] cp) {
 		
 		// Adds goto NPE
 		String[] called = (String[]) d.value;
@@ -740,10 +833,13 @@ public class MethodTranslator implements ModuleMaker {
 			return;
 		
 		// Invokes all possible implementers
+		String freshlabel = getFreshReturnLabel();
 		for (ClassTranslator imp : implementers) {
 			log("\timplementer: %s%n", imp);
-			invoke(translator, called, label, nextlabel, imp, imp.getId(), true);
+			invoke(translator, called, label, freshlabel, imp, imp.getId(), true);
 		}
+		
+		handleException(translator, freshlabel, nextlabel, offset, cp);
 	}
 	
 	private boolean newThread(Translator translator, String[] called, 
@@ -766,7 +862,7 @@ public class MethodTranslator implements ModuleMaker {
 	}
 	
 	private void invokestatic(Translator translator, ExprSemiring d, 
-			String label, String nextlabel) {
+			String label, String nextlabel, int offset, CPInfo[] cp) {
 		
 		String[] called = (String[]) d.value;
 		Translator.log("\tcalled: %s%n", Arrays.toString(called));
@@ -840,6 +936,7 @@ public class MethodTranslator implements ModuleMaker {
 		// Invokes the method
 		d.value = new ExprSemiring.Invoke(true, nargs);
 		fname = TranslatorUtils.formatName(fname, 0);
+		String freshlabel = getFreshReturnLabel();
 		if (isVoid) {
 			if (clinit) {
 				// <p, ret0> -> <p, fname nextlabel> (INVOKE, d.value)
@@ -847,19 +944,23 @@ public class MethodTranslator implements ModuleMaker {
 			}
 			
 			// <p, label> -> <p, fname nextlabel> (INVOKE, d.value, (global, ONE))
-			module.addRule(label, d, fname, nextlabel);
+			module.addRule(label, d, fname, freshlabel);
+			
+			handleException(translator, freshlabel, nextlabel, offset, cp);
 		} else {
-			String freshLabel = getFreshReturnLabel();
 			if (clinit) {
 				// <p, ret0> -> <p, fname freshlabel> (INVOKE, d.value)
-				module.addRule(ret0, d1, fname, freshLabel);
+				module.addRule(ret0, d1, fname, freshlabel);
 			}
 			
 			// <p, label> -> <p, fname freshlabel> (INVOKE, d.value, (global, ONE))
-			module.addRule(label, d, fname, freshLabel);
+			module.addRule(label, d, fname, freshlabel);
+			
+			String freshlabel2 = getFreshReturnLabel();
+			handleException(translator, freshlabel, freshlabel2, offset, cp);
 			
 			// <p, freshlabel> -> <p, nextlabel> (GETRETURN)
-			module.addRule(freshLabel, 
+			module.addRule(freshlabel2, 
 					GETRETURN, TranslatorUtils.getReturnCategory(called[2]), 
 					nextlabel);
 		}
@@ -947,7 +1048,8 @@ public class MethodTranslator implements ModuleMaker {
 			return;
 		}
 		
-		invoke(translator, called, label, nextlabel, coll, coll.getId(), false);
+		if (!invoke(translator, called, label, nextlabel, coll, coll.getId(), false))
+			poppush(label, called[2], false, nextlabel);
 	}
 	
 	private void dynamic(Translator translator, String[] called, 
@@ -1034,7 +1136,7 @@ public class MethodTranslator implements ModuleMaker {
 	 * @param nextlabel the next label.
 	 */
 	private void invokevirtual(Translator translator, ExprSemiring d, 
-			String label, String nextlabel) {
+			String label, String nextlabel, int offset, CPInfo[] cp) {
 		
 		String[] called = (String[]) d.value;
 		Translator.log("\tinvokevirtual: %s%n", Arrays.toString(called));
@@ -1077,14 +1179,17 @@ public class MethodTranslator implements ModuleMaker {
 		boolean cond = subs.size() + ((superColl != null) ? 1 : 0) > 1;
 		
 		// Invokes the first super class that has the method if this class does't have it
+		String freshlabel = getFreshReturnLabel();
 		if (superColl != null) {
-			invoke(translator, called, label, nextlabel, superColl, coll.getId(), cond);
+			invoke(translator, called, label, freshlabel, superColl, coll.getId(), cond);
 		}
 		
 		// Invokes all possible sub classes
 		for (ClassTranslator subColl : subs) {
-			invoke(translator, called, label, nextlabel, subColl, subColl.getId(), cond);
+			invoke(translator, called, label, freshlabel, subColl, subColl.getId(), cond);
 		}
+		
+		handleException(translator, freshlabel, nextlabel, offset, cp);
 	}
 	
 	private void newExpr(Translator translator, ExprSemiring d, 
@@ -1165,6 +1270,46 @@ public class MethodTranslator implements ModuleMaker {
 				new ExprSemiring(NPE, new ExprSemiring.Npe(depth)), 
 				npelabel);
 		module.addRule(npelabel, ERROR, npelabel);
+	}
+	
+	/**
+	 * Jump table for bytecode JSR and RET
+	 */
+	private ArrayList<String> jsrtable = null;
+	
+	private void jsr(ExprSemiring d, String label, String nextlabel, 
+			AbstractInstruction ainst) {
+		
+		// Initializes table (if necessary)
+		if (jsrtable == null) jsrtable = new ArrayList<String>();
+		
+		// Pushes nextlabel's index and saves it in the jump table
+		String freshlabel = getFreshReturnLabel();
+		module.addRule(label, 
+				new ExprSemiring(PUSH, new Value(jsrtable.size())), 
+				freshlabel);
+		jsrtable.add(nextlabel);
+		
+		// Jumps
+		module.addRule(freshlabel, d, TranslatorUtils.branchTarget(name, ainst));
+	}
+	
+	private void ret(ExprSemiring d, String label) {
+		
+		// Makes sure that the jump table is initialized
+		if (jsrtable == null)
+			throw new TranslatorError("Unexpected error while translating a finally block");
+		
+		// Pushes the return address index
+		String freshlabel = getFreshReturnLabel();
+		module.addRule(label, d, freshlabel);
+		
+		// Jumps to return address
+		for (int i = 0; i < jsrtable.size(); i++) {
+			module.addRule(freshlabel, 
+					new ExprSemiring(IF, new If(i)), 
+					jsrtable.get(i));
+		}
 	}
 	
 	@SuppressWarnings("unchecked")

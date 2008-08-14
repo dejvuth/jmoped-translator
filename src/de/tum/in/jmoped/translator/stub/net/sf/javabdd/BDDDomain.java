@@ -8,7 +8,7 @@ public class BDDDomain {
 	int[] vars;
 	
 	BDDDomain(long size) {
-		this.size = new BigInteger(size);
+		this.size = BigInteger.valueOf(size);
 		
 		int bits;
 		if (size <= 2) bits = 1;
