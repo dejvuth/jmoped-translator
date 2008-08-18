@@ -1,6 +1,5 @@
 package de.tum.in.jmoped.translator;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import org.gjt.jclasslib.bytecode.AbstractInstruction;
@@ -16,16 +15,24 @@ import org.gjt.jclasslib.structures.constants.ConstantLongInfo;
 import org.gjt.jclasslib.structures.constants.ConstantStringInfo;
 import org.gjt.jclasslib.structures.constants.ConstantUtf8Info;
 
-import de.tum.in.jmoped.underbone.ExprSemiring.ArithType;
-import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
-import de.tum.in.jmoped.underbone.ExprSemiring.If;
-import de.tum.in.jmoped.underbone.ExprSemiring.JumpType;
-import de.tum.in.jmoped.underbone.ExprSemiring.Local;
-import de.tum.in.jmoped.underbone.ExprSemiring.Return;
-import de.tum.in.jmoped.underbone.ExprSemiring.Unaryop;
-import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
 import de.tum.in.jmoped.underbone.ExprSemiring;
 import de.tum.in.jmoped.underbone.ExprType;
+import de.tum.in.jmoped.underbone.expr.Arith;
+import de.tum.in.jmoped.underbone.expr.Category;
+import de.tum.in.jmoped.underbone.expr.Comp;
+import de.tum.in.jmoped.underbone.expr.Condition;
+import de.tum.in.jmoped.underbone.expr.Dup;
+import de.tum.in.jmoped.underbone.expr.If;
+import de.tum.in.jmoped.underbone.expr.Inc;
+import de.tum.in.jmoped.underbone.expr.Jump;
+import de.tum.in.jmoped.underbone.expr.Local;
+import de.tum.in.jmoped.underbone.expr.Monitorenter;
+import de.tum.in.jmoped.underbone.expr.Newarray;
+import de.tum.in.jmoped.underbone.expr.Poppush;
+import de.tum.in.jmoped.underbone.expr.Print;
+import de.tum.in.jmoped.underbone.expr.Return;
+import de.tum.in.jmoped.underbone.expr.Unaryop;
+import de.tum.in.jmoped.underbone.expr.Value;
 
 import static de.tum.in.jmoped.underbone.ExprType.*;
 
@@ -51,24 +58,24 @@ public class InstructionTranslator {
 		switch (ainst.getOpcode()) {
 		
 		case Opcodes.OPCODE_AALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
+			return new ExprSemiring(ARRAYLOAD, Category.ONE);
 			
 		case Opcodes.OPCODE_AASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.ONE);
+			return new ExprSemiring(ARRAYSTORE, Category.ONE);
 		
 		case Opcodes.OPCODE_ACONST_NULL:
-			return new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, 0));
+			return new ExprSemiring(PUSH, new Value(Category.ONE, 0));
 		
 		case Opcodes.OPCODE_ALOAD:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 		
 		case Opcodes.OPCODE_ALOAD_0:
 		case Opcodes.OPCODE_ALOAD_1:
 		case Opcodes.OPCODE_ALOAD_2:
 		case Opcodes.OPCODE_ALOAD_3:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_ALOAD_0));
+					new Local(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_ALOAD_0));
 			
 		case Opcodes.OPCODE_ANEWARRAY:
 			return multianewarray(translator, cp, 
@@ -76,39 +83,39 @@ public class InstructionTranslator {
 			
 		case Opcodes.OPCODE_ARETURN:
 			return new ExprSemiring(RETURN, 
-					new Return(Return.Type.SOMETHING, CategoryType.ONE));
+					new Return(Return.Type.SOMETHING, Category.ONE));
 			
 		case Opcodes.OPCODE_ARRAYLENGTH:
 			return new ExprSemiring(ARRAYLENGTH);
 			
 		case Opcodes.OPCODE_ASTORE:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 		
 		case Opcodes.OPCODE_ASTORE_0:
 		case Opcodes.OPCODE_ASTORE_1:
 		case Opcodes.OPCODE_ASTORE_2:
 		case Opcodes.OPCODE_ASTORE_3:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_ASTORE_0));
+					new Local(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_ASTORE_0));
 			
 		case Opcodes.OPCODE_ATHROW:
 			return new ExprSemiring(RETURN, new Return(Return.Type.VOID));
 			
 		case Opcodes.OPCODE_BALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
+			return new ExprSemiring(ARRAYLOAD, Category.ONE);
 			
 		case Opcodes.OPCODE_BASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.ONE);
+			return new ExprSemiring(ARRAYSTORE, Category.ONE);
 			
 		case Opcodes.OPCODE_BIPUSH:
 			return bipush(ainst);
 			
 		case Opcodes.OPCODE_CALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
+			return new ExprSemiring(ARRAYLOAD, Category.ONE);
 			
 		case Opcodes.OPCODE_CASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.ONE);
+			return new ExprSemiring(ARRAYSTORE, Category.ONE);
 			
 		case Opcodes.OPCODE_CHECKCAST:
 			return checkcast(translator, cp, ainst);
@@ -123,84 +130,84 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.D2L));
 			
 		case Opcodes.OPCODE_DADD:
-			return new ExprSemiring(ARITH, ArithType.FADD, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.FADD, Category.TWO));
 			
 		case Opcodes.OPCODE_DALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.TWO);
+			return new ExprSemiring(ARRAYLOAD, Category.TWO);
 			
 		case Opcodes.OPCODE_DASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.TWO);
+			return new ExprSemiring(ARRAYSTORE, Category.TWO);
 			
 		case Opcodes.OPCODE_DCMPG:
-			return new ExprSemiring(ARITH, ArithType.FCMPG, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.FCMPG, Category.TWO));
 			
 		case Opcodes.OPCODE_DCMPL:
-			return new ExprSemiring(ARITH, ArithType.FCMPL, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.FCMPL, Category.TWO));
 			
 		case Opcodes.OPCODE_DCONST_0:
 		case Opcodes.OPCODE_DCONST_1:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.TWO, (float) 
+					new Value(Category.TWO, (float) 
 							(ainst.getOpcode() - Opcodes.OPCODE_DCONST_0)));
 			
 		case Opcodes.OPCODE_DDIV:
-			return new ExprSemiring(ARITH, ArithType.FDIV, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.FDIV, Category.TWO));
 				
 		case Opcodes.OPCODE_DLOAD:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.TWO, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.TWO, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_DLOAD_0:
 		case Opcodes.OPCODE_DLOAD_1:
 		case Opcodes.OPCODE_DLOAD_2:
 		case Opcodes.OPCODE_DLOAD_3:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.TWO, ainst.getOpcode() - Opcodes.OPCODE_DLOAD_0));
+					new Local(Category.TWO, ainst.getOpcode() - Opcodes.OPCODE_DLOAD_0));
 			
 		case Opcodes.OPCODE_DMUL:
-			return new ExprSemiring(ARITH, ArithType.FMUL, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.FMUL, Category.TWO));
 			
 		case Opcodes.OPCODE_DNEG:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.DNEG));
 			
 		case Opcodes.OPCODE_DREM:
-			return new ExprSemiring(ARITH, ArithType.FREM, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.FREM, Category.TWO));
 			
 		case Opcodes.OPCODE_DRETURN:
 			return new ExprSemiring(RETURN, 
-					new Return(Return.Type.SOMETHING, CategoryType.TWO));
+					new Return(Return.Type.SOMETHING, Category.TWO));
 			
 		case Opcodes.OPCODE_DSTORE:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.TWO, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.TWO, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_DSTORE_0:
 		case Opcodes.OPCODE_DSTORE_1:
 		case Opcodes.OPCODE_DSTORE_2:
 		case Opcodes.OPCODE_DSTORE_3:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.TWO, ainst.getOpcode() - Opcodes.OPCODE_DSTORE_0));
+					new Local(Category.TWO, ainst.getOpcode() - Opcodes.OPCODE_DSTORE_0));
 			
 		case Opcodes.OPCODE_DSUB:
-			return new ExprSemiring(ARITH, ArithType.FSUB, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.FSUB, Category.TWO));
 			
 		case Opcodes.OPCODE_DUP:
-			return new ExprSemiring(DUP, ExprSemiring.DupType.DUP);
+			return new ExprSemiring(DUP, Dup.DUP);
 			
 		case Opcodes.OPCODE_DUP_X1:
-			return new ExprSemiring(DUP, ExprSemiring.DupType.DUP_X1);
+			return new ExprSemiring(DUP, Dup.DUP_X1);
 			
 		case Opcodes.OPCODE_DUP_X2:
-			return new ExprSemiring(DUP, ExprSemiring.DupType.DUP_X2);
+			return new ExprSemiring(DUP, Dup.DUP_X2);
 			
 		case Opcodes.OPCODE_DUP2:
-			return new ExprSemiring(DUP, ExprSemiring.DupType.DUP2);
+			return new ExprSemiring(DUP, Dup.DUP2);
 			
 		case Opcodes.OPCODE_DUP2_X1:
-			return new ExprSemiring(DUP, ExprSemiring.DupType.DUP2_X1);
+			return new ExprSemiring(DUP, Dup.DUP2_X1);
 			
 		case Opcodes.OPCODE_DUP2_X2:
-			return new ExprSemiring(DUP, ExprSemiring.DupType.DUP_X2);
+			return new ExprSemiring(DUP, Dup.DUP_X2);
 			
 		case Opcodes.OPCODE_F2D:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.F2D));
@@ -212,67 +219,67 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.F2L));
 			
 		case Opcodes.OPCODE_FADD:
-			return new ExprSemiring(ARITH, ArithType.FADD, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.FADD, Category.ONE));
 			
 		case Opcodes.OPCODE_FALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
+			return new ExprSemiring(ARRAYLOAD, Category.ONE);
 			
 		case Opcodes.OPCODE_FASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.ONE);
+			return new ExprSemiring(ARRAYSTORE, Category.ONE);
 			
 		case Opcodes.OPCODE_FCMPG:
-			return new ExprSemiring(ARITH, ArithType.FCMPG, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.FCMPG, Category.ONE));
 			
 		case Opcodes.OPCODE_FCMPL:
-			return new ExprSemiring(ARITH, ArithType.FCMPL, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.FCMPL, Category.ONE));
 			
 		case Opcodes.OPCODE_FCONST_0:
 		case Opcodes.OPCODE_FCONST_1:
 		case Opcodes.OPCODE_FCONST_2:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.ONE, (float) 
+					new Value(Category.ONE, (float) 
 							(ainst.getOpcode() - Opcodes.OPCODE_FCONST_0)));
 		
 		case Opcodes.OPCODE_FDIV:
-			return new ExprSemiring(ARITH, ArithType.FDIV, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.FDIV, Category.ONE));
 				
 		case Opcodes.OPCODE_FLOAD:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_FLOAD_0:
 		case Opcodes.OPCODE_FLOAD_1:
 		case Opcodes.OPCODE_FLOAD_2:
 		case Opcodes.OPCODE_FLOAD_3:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_FLOAD_0));
+					new Local(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_FLOAD_0));
 			
 		case Opcodes.OPCODE_FMUL:
-			return new ExprSemiring(ARITH, ArithType.FMUL, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.FMUL, Category.ONE));
 			
 		case Opcodes.OPCODE_FNEG:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.FNEG));
 			
 		case Opcodes.OPCODE_FREM:
-			return new ExprSemiring(ARITH, ArithType.FREM, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.FREM, Category.ONE));
 			
 		case Opcodes.OPCODE_FRETURN:
 			return new ExprSemiring(RETURN, 
-					new Return(Return.Type.SOMETHING, CategoryType.ONE));
+					new Return(Return.Type.SOMETHING, Category.ONE));
 			
 		case Opcodes.OPCODE_FSTORE:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_FSTORE_0:
 		case Opcodes.OPCODE_FSTORE_1:
 		case Opcodes.OPCODE_FSTORE_2:
 		case Opcodes.OPCODE_FSTORE_3:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_FSTORE_0));
+					new Local(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_FSTORE_0));
 			
 		case Opcodes.OPCODE_FSUB:
-			return new ExprSemiring(ARITH, ArithType.FSUB, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.FSUB, Category.ONE));
 			
 		case Opcodes.OPCODE_GETFIELD:
 			return new ExprSemiring(FIELDLOAD, 
@@ -283,11 +290,11 @@ public class InstructionTranslator {
 			
 		case Opcodes.OPCODE_GOTO:
 		case Opcodes.OPCODE_GOTO_W:
-			return new ExprSemiring(JUMP, JumpType.ONE);
+			return new ExprSemiring(JUMP, Jump.ONE);
 			
 		case Opcodes.OPCODE_I2B:
 		case Opcodes.OPCODE_I2C:
-			return new ExprSemiring(JUMP, JumpType.ONE);
+			return new ExprSemiring(JUMP, Jump.ONE);
 			
 		case Opcodes.OPCODE_I2D:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2D));
@@ -299,19 +306,19 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2L));
 			
 		case Opcodes.OPCODE_I2S:
-			return new ExprSemiring(JUMP, JumpType.ONE);
+			return new ExprSemiring(JUMP, Jump.ONE);
 			
 		case Opcodes.OPCODE_IADD:
-			return new ExprSemiring(ARITH, ArithType.ADD, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.ADD, Category.ONE));
 			
 		case Opcodes.OPCODE_IALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
+			return new ExprSemiring(ARRAYLOAD, Category.ONE);
 			
 		case Opcodes.OPCODE_IAND:
-			return new ExprSemiring(ARITH, ArithType.AND, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.AND, Category.ONE));
 			
 		case Opcodes.OPCODE_IASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.ONE);
+			return new ExprSemiring(ARRAYSTORE, Category.ONE);
 			
 		case Opcodes.OPCODE_ICONST_0:
 		case Opcodes.OPCODE_ICONST_1:
@@ -320,78 +327,78 @@ public class InstructionTranslator {
 		case Opcodes.OPCODE_ICONST_4:
 		case Opcodes.OPCODE_ICONST_5:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_ICONST_0));
+					new Value(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_ICONST_0));
 			
 		case Opcodes.OPCODE_ICONST_M1:
-			return new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, -1));
+			return new ExprSemiring(PUSH, new Value(Category.ONE, -1));
 			
 		case Opcodes.OPCODE_IDIV:
-			return new ExprSemiring(ARITH, ArithType.DIV, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.DIV, Category.ONE));
 			
 		case Opcodes.OPCODE_IF_ACMPEQ:
-			return new ExprSemiring(IFCMP, CompType.EQ);
+			return new ExprSemiring(IFCMP, Comp.EQ);
 			
 		case Opcodes.OPCODE_IF_ACMPNE:
-			return new ExprSemiring(IFCMP, CompType.NE);
+			return new ExprSemiring(IFCMP, Comp.NE);
 		
 		case Opcodes.OPCODE_IF_ICMPEQ:
-			return new ExprSemiring(IFCMP, CompType.EQ);
+			return new ExprSemiring(IFCMP, Comp.EQ);
 			
 		case Opcodes.OPCODE_IF_ICMPGE:
-			return new ExprSemiring(IFCMP, CompType.GE);
+			return new ExprSemiring(IFCMP, Comp.GE);
 			
 		case Opcodes.OPCODE_IF_ICMPGT:
-			return new ExprSemiring(IFCMP, CompType.GT);
+			return new ExprSemiring(IFCMP, Comp.GT);
 			
 		case Opcodes.OPCODE_IF_ICMPLT:
-			return new ExprSemiring(IFCMP, CompType.LT);
+			return new ExprSemiring(IFCMP, Comp.LT);
 			
 		case Opcodes.OPCODE_IF_ICMPLE:
-			return new ExprSemiring(IFCMP, CompType.LE);
+			return new ExprSemiring(IFCMP, Comp.LE);
 			
 		case Opcodes.OPCODE_IF_ICMPNE:
-			return new ExprSemiring(IFCMP, CompType.NE);
+			return new ExprSemiring(IFCMP, Comp.NE);
 			
 		case Opcodes.OPCODE_IFEQ:
-			return new ExprSemiring(IF, new If(CompType.EQ));
+			return new ExprSemiring(IF, new If(Comp.EQ));
 			
 		case Opcodes.OPCODE_IFGE:
-			return new ExprSemiring(IF, new If(CompType.GE));
+			return new ExprSemiring(IF, new If(Comp.GE));
 			
 		case Opcodes.OPCODE_IFGT:
-			return new ExprSemiring(IF, new If(CompType.GT));
+			return new ExprSemiring(IF, new If(Comp.GT));
 			
 		case Opcodes.OPCODE_IFLT:
-			return new ExprSemiring(IF, new If(CompType.LT));
+			return new ExprSemiring(IF, new If(Comp.LT));
 			
 		case Opcodes.OPCODE_IFLE:
-			return new ExprSemiring(IF, new If(CompType.LE));
+			return new ExprSemiring(IF, new If(Comp.LE));
 			
 		case Opcodes.OPCODE_IFNE:
-			return new ExprSemiring(IF, new If(CompType.NE));
+			return new ExprSemiring(IF, new If(Comp.NE));
 			
 		case Opcodes.OPCODE_IFNONNULL:
-			return new ExprSemiring(IF, new If(CompType.NE));
+			return new ExprSemiring(IF, new If(Comp.NE));
 			
 		case Opcodes.OPCODE_IFNULL:
-			return new ExprSemiring(IF, new If(CompType.EQ));
+			return new ExprSemiring(IF, new If(Comp.EQ));
 			
 		case Opcodes.OPCODE_IINC:
 			return iinc(ainst);
 		
 		case Opcodes.OPCODE_ILOAD:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_ILOAD_0:
 		case Opcodes.OPCODE_ILOAD_1:
 		case Opcodes.OPCODE_ILOAD_2:
 		case Opcodes.OPCODE_ILOAD_3:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_ILOAD_0));
+					new Local(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_ILOAD_0));
 			
 		case Opcodes.OPCODE_IMUL:
-			return new ExprSemiring(ARITH, ArithType.MUL, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.MUL, Category.ONE));
 			
 		case Opcodes.OPCODE_INEG:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.INEG));
@@ -412,44 +419,44 @@ public class InstructionTranslator {
 			return invokevirtualInst(cp, ainst);
 			
 		case Opcodes.OPCODE_IOR:
-			return new ExprSemiring(ARITH, ArithType.OR, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.OR, Category.ONE));
 			
 		case Opcodes.OPCODE_IREM:
-			return new ExprSemiring(ARITH, ArithType.REM, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.REM, Category.ONE));
 			
 		case Opcodes.OPCODE_IRETURN:
 			return new ExprSemiring(ExprType.RETURN, 
-					new Return(Return.Type.SOMETHING, CategoryType.ONE));
+					new Return(Return.Type.SOMETHING, Category.ONE));
 			
 		case Opcodes.OPCODE_ISHL:
-			return new ExprSemiring(ARITH, ArithType.SHL, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.SHL, Category.ONE));
 			
 		case Opcodes.OPCODE_ISHR:
-			return new ExprSemiring(ARITH, ArithType.SHR, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.SHR, Category.ONE));
 			
 		case Opcodes.OPCODE_ISTORE:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_ISTORE_0:
 		case Opcodes.OPCODE_ISTORE_1:
 		case Opcodes.OPCODE_ISTORE_2:
 		case Opcodes.OPCODE_ISTORE_3:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.ONE, ainst.getOpcode() - Opcodes.OPCODE_ISTORE_0));
+					new Local(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_ISTORE_0));
 			
 		case Opcodes.OPCODE_ISUB:
-			return new ExprSemiring(ARITH, ArithType.SUB, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.SUB, Category.ONE));
 			
 		case Opcodes.OPCODE_IUSHR:
-			return new ExprSemiring(ARITH, ArithType.USHR, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.USHR, Category.ONE));
 			
 		case Opcodes.OPCODE_IXOR:
-			return new ExprSemiring(ARITH, ArithType.XOR, CategoryType.ONE);
+			return new ExprSemiring(ARITH, new Arith(Arith.XOR, Category.ONE));
 			
 		case Opcodes.OPCODE_JSR:
 		case Opcodes.OPCODE_JSR_W:
-			return new ExprSemiring(PUSH, JumpType.ONE);
+			return new ExprSemiring(PUSH, Jump.ONE);
 			
 		case Opcodes.OPCODE_L2D:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2D));
@@ -461,24 +468,24 @@ public class InstructionTranslator {
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2I));
 			
 		case Opcodes.OPCODE_LADD:
-			return new ExprSemiring(ARITH, ArithType.ADD, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.ADD, Category.TWO));
 			
 		case Opcodes.OPCODE_LALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.TWO);
+			return new ExprSemiring(ARRAYLOAD, Category.TWO);
 			
 		case Opcodes.OPCODE_LAND:
-			return new ExprSemiring(ARITH, ArithType.AND, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.AND, Category.TWO));
 			
 		case Opcodes.OPCODE_LASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.TWO);
+			return new ExprSemiring(ARRAYSTORE, Category.TWO);
 			
 		case Opcodes.OPCODE_LCMP:
-			return new ExprSemiring(ARITH, ArithType.CMP, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.CMP, Category.TWO));
 			
 		case Opcodes.OPCODE_LCONST_0:
 		case Opcodes.OPCODE_LCONST_1:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.TWO, ainst.getOpcode() - Opcodes.OPCODE_LCONST_0));
+					new Value(Category.TWO, ainst.getOpcode() - Opcodes.OPCODE_LCONST_0));
 			
 		case Opcodes.OPCODE_LDC:
 			return ldcInst(translator, cp, ainst);
@@ -490,21 +497,21 @@ public class InstructionTranslator {
 			return ldc_wInst(translator, cp, ainst);
 			
 		case Opcodes.OPCODE_LDIV:
-			return new ExprSemiring(ARITH, ArithType.DIV, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.DIV, Category.TWO));
 			
 		case Opcodes.OPCODE_LLOAD:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.TWO, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.TWO, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_LLOAD_0:
 		case Opcodes.OPCODE_LLOAD_1:
 		case Opcodes.OPCODE_LLOAD_2:
 		case Opcodes.OPCODE_LLOAD_3:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.TWO, ainst.getOpcode() - Opcodes.OPCODE_LLOAD_0));
+					new Local(Category.TWO, ainst.getOpcode() - Opcodes.OPCODE_LLOAD_0));
 			
 		case Opcodes.OPCODE_LMUL:
-			return new ExprSemiring(ARITH, ArithType.MUL, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.MUL, Category.TWO));
 			
 		case Opcodes.OPCODE_LNEG:
 			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.LNEG));
@@ -513,43 +520,43 @@ public class InstructionTranslator {
 			return new ExprSemiring(JUMP, ainst);
 			
 		case Opcodes.OPCODE_LOR:
-			return new ExprSemiring(ARITH, ArithType.OR, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.OR, Category.TWO));
 			
 		case Opcodes.OPCODE_LREM:
-			return new ExprSemiring(ARITH, ArithType.REM, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.REM, Category.TWO));
 			
 		case Opcodes.OPCODE_LRETURN:
-			return new ExprSemiring(RETURN, new Return(Return.Type.SOMETHING, CategoryType.TWO));
+			return new ExprSemiring(RETURN, new Return(Return.Type.SOMETHING, Category.TWO));
 			
 		case Opcodes.OPCODE_LSHL:
-			return new ExprSemiring(ARITH, ArithType.SHL, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.SHL, Category.TWO));
 			
 		case Opcodes.OPCODE_LSHR:
-			return new ExprSemiring(ARITH, ArithType.SHR, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.SHR, Category.TWO));
 			
 		case Opcodes.OPCODE_LSTORE:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.TWO, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.TWO, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_LSTORE_0:
 		case Opcodes.OPCODE_LSTORE_1:
 		case Opcodes.OPCODE_LSTORE_2:
 		case Opcodes.OPCODE_LSTORE_3:
 			return new ExprSemiring(STORE, 
-					new Local(CategoryType.TWO, ainst.getOpcode() - Opcodes.OPCODE_LSTORE_0));
+					new Local(Category.TWO, ainst.getOpcode() - Opcodes.OPCODE_LSTORE_0));
 			
 		case Opcodes.OPCODE_LSUB:
-			return new ExprSemiring(ARITH, ArithType.SUB, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.SUB, Category.TWO));
 			
 		case Opcodes.OPCODE_LUSHR:
-			return new ExprSemiring(ARITH, ArithType.USHR, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.USHR, Category.TWO));
 			
 		case Opcodes.OPCODE_LXOR:
-			return new ExprSemiring(ARITH, ArithType.XOR, CategoryType.TWO);
+			return new ExprSemiring(ARITH, new Arith(Arith.XOR, Category.TWO));
 			
 		case Opcodes.OPCODE_MONITORENTER:
 			return new ExprSemiring(MONITORENTER, 
-					new ExprSemiring.Monitorenter(ExprSemiring.Monitorenter.Type.POP));
+					new Monitorenter(Monitorenter.Type.POP));
 			
 		case Opcodes.OPCODE_MONITOREXIT:
 			return new ExprSemiring(MONITOREXIT);
@@ -564,10 +571,10 @@ public class InstructionTranslator {
 			return multianewarray(translator, cp, TranslatorUtils.getNewarrayType(ainst), 1);
 			
 		case Opcodes.OPCODE_POP:
-			return new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0));
+			return new ExprSemiring(POPPUSH, new Poppush(1, 0));
 			
 		case Opcodes.OPCODE_POP2:
-			return new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(2, 0));
+			return new ExprSemiring(POPPUSH, new Poppush(2, 0));
 			
 		case Opcodes.OPCODE_PUTFIELD:
 			return new ExprSemiring(FIELDSTORE, 
@@ -579,16 +586,16 @@ public class InstructionTranslator {
 			
 		case Opcodes.OPCODE_RET:
 			return new ExprSemiring(LOAD, 
-					new Local(CategoryType.ONE, TranslatorUtils.immediateByte(ainst)));
+					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_RETURN:
 			return new ExprSemiring(ExprType.RETURN, new Return(Return.Type.VOID));
 			
 		case Opcodes.OPCODE_SALOAD:
-			return new ExprSemiring(ARRAYLOAD, CategoryType.ONE);
+			return new ExprSemiring(ARRAYLOAD, Category.ONE);
 			
 		case Opcodes.OPCODE_SASTORE:
-			return new ExprSemiring(ARRAYSTORE, CategoryType.ONE);
+			return new ExprSemiring(ARRAYSTORE, Category.ONE);
 			
 		case Opcodes.OPCODE_SIPUSH:
 			return sipush(ainst);
@@ -597,7 +604,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(JUMP, ainst);
 			
 		case Opcodes.OPCODE_WIDE:
-			return new ExprSemiring(JUMP, JumpType.ONE);
+			return new ExprSemiring(JUMP, Jump.ONE);
 		}
 		
 		throw new TranslatorError("Unsupported bytecode instruction: " 
@@ -608,7 +615,7 @@ public class InstructionTranslator {
 		
 		int b = TranslatorUtils.immediateByte(ainst);
 		if (b > 127) b -= 256;
-		return new ExprSemiring(ExprType.PUSH, new ExprSemiring.Value(CategoryType.ONE, b));
+		return new ExprSemiring(ExprType.PUSH, new Value(Category.ONE, b));
 	}
 	
 //	private static void fillSubclasses(Translator translator, Set<ClassTranslator> set,
@@ -677,10 +684,8 @@ public class InstructionTranslator {
 		// Null is ok, always included
 		set.add(0);
 		
-		ExprSemiring.Condition cond = new ExprSemiring.Condition(
-				ExprSemiring.Condition.ConditionType.CONTAINS, 
-				set);
-		return new ExprSemiring(JUMP, JumpType.ONE, cond);
+		Condition cond = new Condition(Condition.CONTAINS, set);
+		return new ExprSemiring(JUMP, Jump.ONE, cond);
 	}
 	
 	private static ExprSemiring getstatic(CPInfo[] cp, AbstractInstruction ainst) {
@@ -703,7 +708,7 @@ public class InstructionTranslator {
 			if (c > 127) c -= 256;
 		}
 		return new ExprSemiring(ExprType.INC, 
-				new ExprSemiring.Inc(iinst.getImmediateByte(), c));
+				new Inc(iinst.getImmediateByte(), c));
 	}
 	
 	private static ExprSemiring instanceofInst(Translator translator, CPInfo[] cp, 
@@ -723,20 +728,20 @@ public class InstructionTranslator {
 			if (ref[1].equals("print") || ref[1].equals("println")) {
 				
 				// Finds out type
-				ExprSemiring.Print.Type type = null;
+				int type = -1;
 				if (ref[2].matches("\\((I|J)\\)V"))
-					type = ExprSemiring.Print.Type.INTEGER;
+					type = Print.INTEGER;
 				else if (ref[2].matches("\\((F|D)\\)V"))
-					type = ExprSemiring.Print.Type.FLOAT;
+					type = Print.FLOAT;
 				else if (ref[2].equals("(C)V"))
-					type = ExprSemiring.Print.Type.CHARACTER;
+					type = Print.CHARACTER;
 				else if (ref[2].equals("(Ljava/lang/String;)V"))
-					type = ExprSemiring.Print.Type.STRING;
+					type = Print.STRING;
 				
 				// Not print, if type not supported
-				if (type != null) {
+				if (type != -1) {
 					return new ExprSemiring(PRINT, 
-							new ExprSemiring.Print(type, ref[1].equals("println")));
+							new Print(type, ref[1].equals("println")));
 				}
 			}
 		}
@@ -744,7 +749,8 @@ public class InstructionTranslator {
 		return new ExprSemiring(INVOKE, ref);
 	}
 	
-	private static ExprSemiring ldcInst(Translator translator, CPInfo[] cp, int i, AbstractInstruction ainst) {
+	private static ExprSemiring ldcInst(Translator translator, CPInfo[] cp, 
+			int i, AbstractInstruction ainst) {
 		
 		CPInfo ce = cp[i];
 		
@@ -752,28 +758,26 @@ public class InstructionTranslator {
 		
 		case CPInfo.CONSTANT_INTEGER:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.ONE, ((ConstantIntegerInfo) ce).getInt()));
+					new Value(Category.ONE, ((ConstantIntegerInfo) ce).getInt()));
 			
 		case CPInfo.CONSTANT_LONG:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.TWO, (int) ((ConstantLongInfo) ce).getLong()));
+					new Value(Category.TWO, (int) ((ConstantLongInfo) ce).getLong()));
 				
 		case CPInfo.CONSTANT_FLOAT:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.ONE, ((ConstantFloatInfo) ce).getFloat()));
+					new Value(Category.ONE, ((ConstantFloatInfo) ce).getFloat()));
 			
 		case CPInfo.CONSTANT_DOUBLE:
 			return new ExprSemiring(PUSH, 
-					new ExprSemiring.Value(CategoryType.TWO, ((ConstantDoubleInfo) ce).getDouble()));
+					new Value(Category.TWO, ((ConstantDoubleInfo) ce).getDouble()));
 			
 		case CPInfo.CONSTANT_CLASS: {
-			int index = ((ConstantClassInfo) ce).getNameIndex();
-			String string = ((ConstantUtf8Info) cp[index]).getString();
-			ClassTranslator ct = translator.getClassTranslator(string);
+			ClassTranslator ct = translator.getClassTranslator(cp, i);
 			if (ct == null)	// FIXME
-				return new ExprSemiring(PUSH, new ExprSemiring.Value(1));
+				return new ExprSemiring(PUSH, new Value(Category.ONE, 1));
 			
-			return new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, ct.getId()));
+			return new ExprSemiring(PUSH, new Value(Category.ONE, ct.getId()));
 		}
 			
 		// TODO
@@ -791,18 +795,32 @@ public class InstructionTranslator {
 				throw new TranslatorError("Cannot handle class: %s", ce.getClass());
 			
 			String string = ((ConstantUtf8Info) cp[index]).getString();
-			return new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, string));
+			return new ExprSemiring(PUSH, new Value(Category.ONE, string));
 		}
 	}
 	
-	private static ExprSemiring ldcInst(Translator translator, CPInfo[] cp, AbstractInstruction ainst) {
-		
-		return ldcInst(translator, cp, TranslatorUtils.immediateByte(ainst), ainst);
+	static int immediateLdc(AbstractInstruction ainst) {
+		switch (ainst.getOpcode()) {
+		case Opcodes.OPCODE_LDC:
+			return TranslatorUtils.immediateByte(ainst);
+		case Opcodes.OPCODE_LDC_W:
+		case Opcodes.OPCODE_LDC2_W:
+			return TranslatorUtils.immediateShort(ainst);
+		default:
+			throw new TranslatorError("Unexpected instruction");
+		}
 	}
 	
-	private static ExprSemiring ldc_wInst(Translator translator, CPInfo[] cp, AbstractInstruction ainst) {
+	private static ExprSemiring ldcInst(Translator translator, CPInfo[] cp, 
+			AbstractInstruction ainst) {
 		
-		return ldcInst(translator, cp, TranslatorUtils.immediateShort(ainst), ainst);
+		return ldcInst(translator, cp, immediateLdc(ainst), ainst);
+	}
+	
+	private static ExprSemiring ldc_wInst(Translator translator, CPInfo[] cp, 
+			AbstractInstruction ainst) {
+		
+		return ldcInst(translator, cp, immediateLdc(ainst), ainst);
 	}
 	
 	private static ExprSemiring multianewarray(Translator translator, CPInfo[] cp, 
@@ -815,7 +833,7 @@ public class InstructionTranslator {
 		}
 			
 		return new ExprSemiring(NEWARRAY, 
-				new ExprSemiring.Newarray(new ExprSemiring.Value(CategoryType.ONE, 0), dim, types));
+				new Newarray(new Value(Category.ONE, 0), dim, types));
 	}
 	
 	private static ExprSemiring newInst(CPInfo[] cp, AbstractInstruction ainst) {
@@ -824,7 +842,7 @@ public class InstructionTranslator {
 		
 		// Bypasses the AssertionError class
 		if (className.equals("java/lang/AssertionError"))
-			return new ExprSemiring(JUMP, JumpType.ONE);
+			return new ExprSemiring(JUMP, Jump.ONE);
 		
 		return new ExprSemiring(ExprType.NEW, className);
 	}
@@ -833,7 +851,7 @@ public class InstructionTranslator {
 		
 		int s = TranslatorUtils.immediateShort(ainst);
 		if (s > 32767) s -= 65536;
-		return new ExprSemiring(ExprType.PUSH, new ExprSemiring.Value(CategoryType.ONE, s));
+		return new ExprSemiring(ExprType.PUSH, new Value(Category.ONE, s));
 	}
 	
 	private static void log(String msg, Object... args) {

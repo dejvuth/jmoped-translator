@@ -7,6 +7,7 @@ import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDDomain;
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDVarSet;
 import de.tum.in.jmoped.translator.stub.de.tum.in.jmoped.underbone.VarManager;
 import de.tum.in.jmoped.underbone.ExprSemiring;
+import de.tum.in.jmoped.underbone.expr.Value;
 import de.tum.in.wpds.CancelMonitor;
 import de.tum.in.wpds.Sat;
 import de.tum.in.wpds.Semiring;
@@ -40,8 +41,8 @@ public class BDDSemiring implements Semiring {
 		BDDDomain s0dom = manager.getStackDomain(sp);
 		
 		// Abstracts the stack
-		ExprSemiring.Value value = (ExprSemiring.Value) A.value;
-		int category = value.category.intValue();
+		Value value = (Value) A.value;
+		int category = value.getCategory().intValue();
 		BDDDomain[] sdoms = new BDDDomain[category + 1];
 		sdoms[0] = spdom;
 		sdoms[1] = s0dom;
@@ -65,7 +66,7 @@ public class BDDSemiring implements Semiring {
 	 * @param dom the BDD domain.
 	 * @return the BDD representing the value.
 	 */
-	private BDD bddOf(ExprSemiring.Value value, BDDDomain dom) {
+	private BDD bddOf(Value value, BDDDomain dom) {
 		
 		// All values
 		if (value.all()) {

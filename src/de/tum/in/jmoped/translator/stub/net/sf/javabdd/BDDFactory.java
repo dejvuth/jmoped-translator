@@ -19,16 +19,19 @@ public class BDDFactory {
 	}
 	
 	public BDDDomain[] extDomain(long[] sizes) {
+		// Construct BDD domains
 		BDDDomain[] doms = new BDDDomain[sizes.length];
 		for (int i = 0; i < sizes.length; i++) {
 			doms[i] = new BDDDomain(sizes[i]);
 		}
 		
+		// Counts the number of variables
 		int varnum = 0;
 		for (int i = 0; i < sizes.length; i++) {
 			varnum += doms[i].vars.length;
 		}
 		
+		// Initializes the variables of the domains
 		int var = 1;
 		int round = 0;
 		while (var <= varnum) {

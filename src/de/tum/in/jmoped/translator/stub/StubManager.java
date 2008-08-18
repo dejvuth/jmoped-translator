@@ -22,11 +22,11 @@ public class StubManager {
 		// The stub's prefix is always removed.
 		stubs.add("Stub");
 		
-		stubs.add("de/tum/in/jmoped/underbone/BDDSemiring");
+//		stubs.add("de/tum/in/jmoped/underbone/BDDSemiring");
 //		stubs.add("de/tum/in/jmoped/underbone/ExprSemiring");
-		stubs.add("de/tum/in/jmoped/underbone/ExprType");
+//		stubs.add("de/tum/in/jmoped/underbone/ExprType");
 //		stubs.add("de/tum/in/jmoped/underbone/Variable");
-		stubs.add("de/tum/in/jmoped/underbone/VarManager");
+//		stubs.add("de/tum/in/jmoped/underbone/VarManager");
 		
 		stubs.add("de/tum/in/wpds/Utils");
 		

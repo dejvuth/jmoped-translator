@@ -13,18 +13,24 @@ import org.gjt.jclasslib.structures.attributes.LocalVariableTableEntry;
 import org.gjt.jclasslib.structures.elementvalues.ElementValue;
 
 import de.tum.in.jmoped.annotation.AnnotationUtils;
-import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
-import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
-import de.tum.in.jmoped.underbone.ExprSemiring.JumpType;
-import de.tum.in.jmoped.underbone.ExprSemiring.Local;
+import de.tum.in.jmoped.underbone.expr.Arith;
+import de.tum.in.jmoped.underbone.expr.Category;
+import de.tum.in.jmoped.underbone.expr.Comp;
+import de.tum.in.jmoped.underbone.expr.Dup;
+import de.tum.in.jmoped.underbone.expr.If;
+import de.tum.in.jmoped.underbone.expr.Inc;
+import de.tum.in.jmoped.underbone.expr.Invoke;
+import de.tum.in.jmoped.underbone.expr.Jump;
+import de.tum.in.jmoped.underbone.expr.Local;
+import de.tum.in.jmoped.underbone.expr.New;
+import de.tum.in.jmoped.underbone.expr.Newarray;
+import de.tum.in.jmoped.underbone.expr.Value;
 import de.tum.in.jmoped.underbone.ExprSemiring;
 import de.tum.in.jmoped.underbone.ExprType;
 import de.tum.in.jmoped.underbone.LabelUtils;
 import de.tum.in.jmoped.underbone.Module;
 
 import static de.tum.in.jmoped.underbone.ExprType.*;
-import static de.tum.in.jmoped.underbone.ExprSemiring.CompType.*;
-import static de.tum.in.jmoped.underbone.ExprSemiring.ArithType.*;
 
 /**
  * The <code>MethodWrapper</code> wraps the initial method by creating
@@ -280,13 +286,13 @@ public class MethodWrapper {
 		}
 		ExprSemiring d = new ExprSemiring(
 				ExprType.NEW, 
-				new ExprSemiring.New(
+				new New(
 						ict.getId(), 
 						translator.getObjectBaseId() + ict.size()));
 		init.addRule(from, d, to);
 		
 		from = to; to = getFreshLabel();
-		d = new ExprSemiring(DUP, ExprSemiring.DupType.DUP);
+		d = new ExprSemiring(DUP, Dup.DUP);
 		init.addRule(from, d, to);
 		
 		return to;
@@ -318,7 +324,7 @@ public class MethodWrapper {
 		// Calls static initializer (if any)
 		if (translator.containsClinit(className)) {
 			to = getFreshLabel();
-			init.addRule(from, new ExprSemiring(INVOKE, new ExprSemiring.Invoke()), 
+			init.addRule(from, new ExprSemiring(INVOKE, new Invoke()), 
 					TranslatorUtils.formatName(MethodTranslator.getClinitName(className), 0), 
 					to);
 			from = to;
@@ -334,7 +340,7 @@ public class MethodWrapper {
 			to = getFreshLabel();
 			d = new ExprSemiring(
 					NEW, 
-					new ExprSemiring.New(
+					new New(
 							ct.getId(), 
 							ct.size() + translator.getObjectBaseId()));
 			init.addRule(from, d, to);
@@ -343,7 +349,7 @@ public class MethodWrapper {
 		
 		for (String param : paramTypes) {
 			
-			CategoryType category = TranslatorUtils.getCategory(param);
+			Category cat = TranslatorUtils.getCategory(param);
 			lv.put(i, lvcount++);
 			
 			// Handles java/lang/Integer as parameters
@@ -357,11 +363,11 @@ public class MethodWrapper {
 			if (nondet) {
 				// Pushes non-deterministic value
 				if (range == null) {
-					d = new ExprSemiring(PUSH, new ExprSemiring.Value(category));
+					d = new ExprSemiring(PUSH, new Value(cat));
 				} else {
 					int min = range.min;
 					if (min < 0 && param.charAt(0) == '[') min = 0;
-					d = new ExprSemiring(PUSH, new ExprSemiring.Value(category, min, 1, range.max));
+					d = new ExprSemiring(PUSH, new Value(cat, min, 1, range.max));
 				}
 				init.addRule(from, d, to);
 			} else {
@@ -381,20 +387,20 @@ public class MethodWrapper {
 				
 				// Pushes the minimum number
 				if (min < 0 && param.charAt(0) == '[') min = 0;
-				d = new ExprSemiring(ExprType.PUSH, new ExprSemiring.Value(CategoryType.ONE, min));
+				d = new ExprSemiring(ExprType.PUSH, new Value(Category.ONE, min));
 				init.addRule(from, d, to);
 				
 				// Updates labels
 				from = to; to = getFreshLabel();
 				
 				// Stores the minimum number to variable i
-				d = new ExprSemiring(ExprType.STORE, new Local(CategoryType.ONE, lv.get(i)));
+				d = new ExprSemiring(ExprType.STORE, new Local(Category.ONE, lv.get(i)));
 				init.addRule(from, d, to);
 				
 				// Jumps forwards and remembers the jumped label
 				from = to; to = getFreshLabel();
 				flabels.push(to);
-				init.addRule(from, JUMP, JumpType.ONE, to);
+				init.addRule(from, JUMP, Jump.ONE, to);
 				
 				// Updates labels and remembers backwards jump label 
 				// (the next one after goto)
@@ -405,7 +411,7 @@ public class MethodWrapper {
 			// Calls initializer of Integer
 			if (param.equals("Ljava/lang/Integer;")) {
 				from = to; to = getFreshLabel();
-				d = new ExprSemiring(INVOKE, new ExprSemiring.Invoke(false, 2));
+				d = new ExprSemiring(INVOKE, new Invoke(false, 2));
 				init.addRule(from, d, "java/lang/Integer.<init>(I)V0", to);
 			}
 				
@@ -425,13 +431,13 @@ public class MethodWrapper {
 				from = to; to = getFreshLabel();
 				
 				// Creates array
-				ExprSemiring.Value v;
+				Value v;
 				if (range != null) {
-					v = new ExprSemiring.Value(CategoryType.ONE, range.min, 1, range.max);
-					d = new ExprSemiring(NEWARRAY, new ExprSemiring.Newarray(v));
+					v = new Value(Category.ONE, range.min, 1, range.max);
+					d = new ExprSemiring(NEWARRAY, new Newarray(v));
 				} else {
-					v = new ExprSemiring.Value(CategoryType.ONE);
-					d = new ExprSemiring(NEWARRAY, new ExprSemiring.Newarray(v));
+					v = new Value(Category.ONE);
+					d = new ExprSemiring(NEWARRAY, new Newarray(v));
 				}
 				init.addRule(from, d, to);
 			} else {
@@ -455,25 +461,25 @@ public class MethodWrapper {
 				init.addRule(from, HEAPRESET, to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, LOAD, new Local(CategoryType.ONE, lv.get(i)), to);
+				init.addRule(from, LOAD, new Local(Category.ONE, lv.get(i)), to);
 				
 				// Pushes the min value of array elements
 				from = to; to = getFreshLabel();
 				init.addRule(from, 
-						NEWARRAY, new ExprSemiring.Newarray(new ExprSemiring.Value(CategoryType.ONE, min)), 
+						NEWARRAY, new Newarray(new Value(Category.ONE, min)), 
 						to);
 					
 				from = to; to = getFreshLabel();
-				init.addRule(from, STORE, new Local(CategoryType.ONE, lv.get(i) + 1), to);
+				init.addRule(from, STORE, new Local(Category.ONE, lv.get(i) + 1), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, 1), to);
+				init.addRule(from, PUSH, new Value(Category.ONE, 1), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, STORE, new Local(CategoryType.ONE, lv.get(i) + 2), to);
+				init.addRule(from, STORE, new Local(Category.ONE, lv.get(i) + 2), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, JUMP, JumpType.ONE, to);
+				init.addRule(from, JUMP, Jump.ONE, to);
 				flabels.push(to);
 				
 				to = getFreshLabel();
@@ -495,7 +501,7 @@ public class MethodWrapper {
 				}
 				
 				v++;
-				init.addRule(from, LOAD, new Local(CategoryType.ONE, v), to);
+				init.addRule(from, LOAD, new Local(Category.ONE, v), to);
 				from = to; to = getFreshLabel();
 			}
 		}
@@ -507,7 +513,7 @@ public class MethodWrapper {
 		
 		// Invokes the method
 		init.addRule(from, 
-				new ExprSemiring(INVOKE, new ExprSemiring.Invoke(
+				new ExprSemiring(INVOKE, new Invoke(
 						isStatic(), 
 						TranslatorUtils.countParams(methodDesc) + (isStatic() ? 0 : 1), 
 						true)), 
@@ -521,163 +527,163 @@ public class MethodWrapper {
 		//TODO Pushes "this" back
 		if (!isStatic()) {
 			from = to; to = getFreshLabel();
-			init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, 1), to);
+			init.addRule(from, PUSH, new Value(Category.ONE, 1), to);
 		}
 		
 		for (i = paramTypes.size()-1; i >= 0; i--) {
 			
-			CategoryType category = TranslatorUtils.getCategory(paramTypes.get(i));
+			Category category = TranslatorUtils.getCategory(paramTypes.get(i));
 			if (paramTypes.get(i).charAt(0) == '[') {
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, LOAD, new Local(CategoryType.ONE, lv.get(i) + 1), to);
+				init.addRule(from, LOAD, new Local(Category.ONE, lv.get(i) + 1), to);
 				
 				from = to; to = getFreshLabel();
 				init.addRule(from, ARRAYLENGTH, to);
 				
 				from = to; to = getFreshLabel();
 				String jump = to;
-				init.addRule(from, IF, new ExprSemiring.If(NE), jump);
+				init.addRule(from, IF, new If(Comp.NE), jump);
 				to = getFreshLabel();
-				init.addRule(from, IF, new ExprSemiring.If(EQ), to);
+				init.addRule(from, IF, new If(Comp.EQ), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, 0), to);
+				init.addRule(from, PUSH, new Value(Category.ONE, 0), to);
 				
 				from = to; to = jump;
-				init.addRule(from, STORE, new Local(CategoryType.ONE, lv.get(i) + 2), to);
+				init.addRule(from, STORE, new Local(Category.ONE, lv.get(i) + 2), to);
 				
 				from = jump; to = getFreshLabel();
-				init.addRule(from, LOAD, new Local(CategoryType.ONE, lv.get(i) + 1), to);
+				init.addRule(from, LOAD, new Local(Category.ONE, lv.get(i) + 1), to);
 				
 				from = to; to = getFreshLabel();
 				init.addRule(from, ARRAYLENGTH, to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, 1), to);
+				init.addRule(from, PUSH, new Value(Category.ONE, 1), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, ARITH, SUB, CategoryType.ONE, to);
+				init.addRule(from, ARITH, new Arith(Arith.SUB, Category.ONE), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, STORE, new Local(CategoryType.ONE, lv.get(i) + 3), to);
+				init.addRule(from, STORE, new Local(Category.ONE, lv.get(i) + 3), to);
 				
 				from = to; to = getFreshLabel();
 				String l64 = to;
-				init.addRule(from, JUMP, JumpType.ONE, to);
+				init.addRule(from, JUMP, Jump.ONE, to);
 				
 				from = getFreshLabel(); to = getFreshLabel();
 				String l33 = from;
-				init.addRule(from, LOAD, new Local(CategoryType.ONE, lv.get(i) + 1), to);
+				init.addRule(from, LOAD, new Local(Category.ONE, lv.get(i) + 1), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from , LOAD, new Local(CategoryType.ONE, lv.get(i) + 3), to);
+				init.addRule(from , LOAD, new Local(Category.ONE, lv.get(i) + 3), to);
 				
 				from = to; to = getFreshLabel();
 				init.addRule(from, ARRAYLOAD, category, to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, amax.get(i)), to);
+				init.addRule(from, PUSH, new Value(Category.ONE, amax.get(i)), to);
 				
 				from = to; to = getFreshLabel();
 				String l51 = to;
-				init.addRule(from, IFCMP, GE, to);
+				init.addRule(from, IFCMP, Comp.GE, to);
 				to = getFreshLabel();
-				init.addRule(from, IFCMP, LT, to);
+				init.addRule(from, IFCMP, Comp.LT, to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, LOAD, new Local(CategoryType.ONE, lv.get(i) + 1), to);
+				init.addRule(from, LOAD, new Local(Category.ONE, lv.get(i) + 1), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from , LOAD, new Local(CategoryType.ONE, lv.get(i) + 3), to);
+				init.addRule(from , LOAD, new Local(Category.ONE, lv.get(i) + 3), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from , DUP, ExprSemiring.DupType.DUP2, to);
+				init.addRule(from , DUP, Dup.DUP2, to);
 				
 				from = to; to = getFreshLabel();
 				init.addRule(from, ARRAYLOAD, category, to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, 1), to);
+				init.addRule(from, PUSH, new Value(Category.ONE, 1), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, ARITH, ADD, CategoryType.ONE, to);
+				init.addRule(from, ARITH, new Arith(Arith.ADD, Category.ONE), to);
 				
 				from = to; to = getFreshLabel();
 				init.addRule(from, ARRAYSTORE, category, to);
 				
 				from = to; to = flabels.peek();
-				init.addRule(from, JUMP, JumpType.ONE, to);
+				init.addRule(from, JUMP, Jump.ONE, to);
 				
 				from = l51; to = getFreshLabel();
-				init.addRule(from, LOAD, new Local(CategoryType.ONE, lv.get(i) + 1), to);
+				init.addRule(from, LOAD, new Local(Category.ONE, lv.get(i) + 1), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from , LOAD, new Local(CategoryType.ONE, lv.get(i) + 3), to);
+				init.addRule(from , LOAD, new Local(Category.ONE, lv.get(i) + 3), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, amin.get(i)), to);
+				init.addRule(from, PUSH, new Value(Category.ONE, amin.get(i)), to);
 				
 				from = to; to = getFreshLabel();
 				init.addRule(from, ARRAYSTORE, category, to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from , LOAD, new Local(CategoryType.ONE, lv.get(i) + 3), to);
+				init.addRule(from , LOAD, new Local(Category.ONE, lv.get(i) + 3), to);
 				
 				from = to; to = getFreshLabel();
 				jump = to;
-				init.addRule(from, IF, new ExprSemiring.If(NE), jump);
+				init.addRule(from, IF, new If(Comp.NE), jump);
 				to = getFreshLabel();
-				init.addRule(from, IF, new ExprSemiring.If(EQ), to);
+				init.addRule(from, IF, new If(Comp.EQ), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, PUSH, new ExprSemiring.Value(CategoryType.ONE, 0), to);
+				init.addRule(from, PUSH, new Value(Category.ONE, 0), to);
 				
 				from = to; to = jump;
-				init.addRule(from, STORE, new Local(CategoryType.ONE, lv.get(i) + 2), to);
+				init.addRule(from, STORE, new Local(Category.ONE, lv.get(i) + 2), to);
 				
 				from = jump; to = l64;
-				init.addRule(from, INC, new ExprSemiring.Inc(lv.get(i)+3, -1), to);
+				init.addRule(from, INC, new Inc(lv.get(i)+3, -1), to);
 				
 				from = l64; to = getFreshLabel();
-				init.addRule(from , LOAD, new Local(CategoryType.ONE, lv.get(i) + 3), to);
+				init.addRule(from , LOAD, new Local(Category.ONE, lv.get(i) + 3), to);
 				
 				from = to; to = flabels.pop();
-				init.addRule(from, IF, new ExprSemiring.If(GE), l33);
-				init.addRule(from, IF, new ExprSemiring.If(LT), to);
+				init.addRule(from, IF, new If(Comp.GE), l33);
+				init.addRule(from, IF, new If(Comp.LT), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from , LOAD, new Local(CategoryType.ONE, lv.get(i) + 2), to);
+				init.addRule(from , LOAD, new Local(Category.ONE, lv.get(i) + 2), to);
 				
 				from = to; to = getFreshLabel();
-				init.addRule(from, IF, new ExprSemiring.If(NE), blabels.pop());
-				init.addRule(from, IF, new ExprSemiring.If(EQ), to);
+				init.addRule(from, IF, new If(Comp.NE), blabels.pop());
+				init.addRule(from, IF, new If(Comp.EQ), to);
 			}
 			
 			// Increments the variable i
 			from = to; to = flabels.pop();
-			d = new ExprSemiring(ExprType.INC, new ExprSemiring.Inc(lv.get(i), 1));
+			d = new ExprSemiring(ExprType.INC, new Inc(lv.get(i), 1));
 			init.addRule(from, d, to);
 			
 			// Pushes the variable i
 			from = to; to = getFreshLabel();
-			d = new ExprSemiring(ExprType.LOAD, new Local(CategoryType.ONE, lv.get(i)));
+			d = new ExprSemiring(ExprType.LOAD, new Local(Category.ONE, lv.get(i)));
 			init.addRule(from, d, to);
 			
 			// Pushes the maximum value of parameter i
 			from = to; to = getFreshLabel();
 			d = new ExprSemiring(ExprType.PUSH, 
-					new ExprSemiring.Value(CategoryType.ONE, maxs.get(i)));
+					new Value(Category.ONE, maxs.get(i)));
 			init.addRule(from, d, to);
 			
 			// Jumps back if the variable i is less than the maximum value
 			from = to; to = blabels.pop();
-			d = new ExprSemiring(ExprType.IFCMP, CompType.LT);
+			d = new ExprSemiring(ExprType.IFCMP, Comp.LT);
 			init.addRule(from, d, to);
 			
 			// Falls through if the variable i is not less than the maximum value
 			to = getFreshLabel();
-			d = new ExprSemiring(ExprType.IFCMP, CompType.GE);
+			d = new ExprSemiring(ExprType.IFCMP, Comp.GE);
 			init.addRule(from, d, to);
 		}
 		

@@ -274,7 +274,7 @@ public class ClassTranslator {
 	 * 
 	 * @return the set of subclasses.
 	 */
-	public HashSet<ClassTranslator> getSubClasses() {
+	public Set<ClassTranslator> getSubClasses() {
 		return subClasses;
 	}
 	

@@ -28,20 +28,25 @@ import org.gjt.jclasslib.structures.constants.ConstantClassInfo;
 
 import de.tum.in.jmoped.translator.stub.Bypasser;
 import de.tum.in.jmoped.translator.stub.StubManager;
-import de.tum.in.jmoped.underbone.ExprSemiring.ArithType;
-import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
-import de.tum.in.jmoped.underbone.ExprSemiring.CompType;
-import de.tum.in.jmoped.underbone.ExprSemiring.If;
-import de.tum.in.jmoped.underbone.ExprSemiring.JumpType;
-import de.tum.in.jmoped.underbone.ExprSemiring.Local;
-import de.tum.in.jmoped.underbone.ExprSemiring.Poppush;
-import de.tum.in.jmoped.underbone.ExprSemiring.Return;
-import de.tum.in.jmoped.underbone.ExprSemiring.Value;
 import de.tum.in.jmoped.underbone.ExprSemiring;
 import de.tum.in.jmoped.underbone.LabelUtils;
 import de.tum.in.jmoped.underbone.Remopla;
-import de.tum.in.jmoped.underbone.ExprSemiring.Condition;
-import de.tum.in.jmoped.underbone.ExprSemiring.Condition.ConditionType;
+import de.tum.in.jmoped.underbone.expr.Arith;
+import de.tum.in.jmoped.underbone.expr.Category;
+import de.tum.in.jmoped.underbone.expr.Comp;
+import de.tum.in.jmoped.underbone.expr.Condition;
+import de.tum.in.jmoped.underbone.expr.Field;
+import de.tum.in.jmoped.underbone.expr.If;
+import de.tum.in.jmoped.underbone.expr.Invoke;
+import de.tum.in.jmoped.underbone.expr.Jump;
+import de.tum.in.jmoped.underbone.expr.Local;
+import de.tum.in.jmoped.underbone.expr.Monitorenter;
+import de.tum.in.jmoped.underbone.expr.New;
+import de.tum.in.jmoped.underbone.expr.NotifyType;
+import de.tum.in.jmoped.underbone.expr.Npe;
+import de.tum.in.jmoped.underbone.expr.Poppush;
+import de.tum.in.jmoped.underbone.expr.Return;
+import de.tum.in.jmoped.underbone.expr.Value;
 import de.tum.in.jmoped.underbone.ExprType;
 import de.tum.in.jmoped.underbone.Module;
 import de.tum.in.wpds.Rule;
@@ -251,13 +256,13 @@ public class MethodTranslator implements ModuleMaker {
 				// <p, name0> -> <p, clinit0 ret0> (INVOKE, 0, (global, EQ))
 				String next = getFreshReturnLabel();
 				module.addRule(label,
-						new ExprSemiring(INVOKE, new ExprSemiring.Invoke(), new Condition(ConditionType.ZERO, superName)), 
+						new ExprSemiring(INVOKE, new Invoke(), new Condition(Condition.ZERO, superName)), 
 						TranslatorUtils.formatName(clinitOf(superName), 0), 
 						next);
 				
 				// <p, name0> -> <p, label> (ONE, (global, NE))
 				module.addRule(label,
-						new ExprSemiring(JUMP, JumpType.ONE, new Condition(ConditionType.ONE, superName)), 
+						new ExprSemiring(JUMP, Jump.ONE, new Condition(Condition.ONE, superName)), 
 						next);
 				label = next;
 			}
@@ -364,15 +369,7 @@ public class MethodTranslator implements ModuleMaker {
 				
 			case Opcodes.OPCODE_LDC:
 			case Opcodes.OPCODE_LDC_W:
-				// Replaces Integer.MAX_VALUE
-				ExprSemiring.Value value = (ExprSemiring.Value) d.value;
-				if (translator.nondeterministic() && value.isInteger()) {
-					if (value.intValue() == Integer.MAX_VALUE)
-						value.setValue((1 << (translator.getBits() - 1)) - 1);
-					if (value.intValue() == Integer.MIN_VALUE)
-						value.setValue(-(1 << (translator.getBits() - 1)));
-				}
-				module.addRule(label, d, nextLabel(i));
+				ldc(translator, d, label, nextLabel(i), ainst, cp);
 				break;
 				
 				
@@ -386,7 +383,7 @@ public class MethodTranslator implements ModuleMaker {
 					module.addSharedRule(label, d, nextLabel(i));
 				else
 					module.addRule(label, 
-							new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), 
+							new ExprSemiring(POPPUSH, new Poppush(1, 0)), 
 							nextLabel(i));
 				break;
 				
@@ -455,7 +452,7 @@ public class MethodTranslator implements ModuleMaker {
 			// Propagates exceptions 
 			String label1 = getFreshReturnLabel();
 			module.addRule(label, new ExprSemiring(
-					GLOBALSTORE, new ExprSemiring.Field(CategoryType.ONE, Remopla.e)),
+					GLOBALSTORE, new Field(Category.ONE, Remopla.e)),
 					label1);
 			
 			returnExpr(translator, d, label1);
@@ -489,8 +486,8 @@ public class MethodTranslator implements ModuleMaker {
 			// Adds a rule
 			candidates.removeAll(handled);
 			Condition cond = new Condition(
-					ConditionType.CONTAINS, candidates);
-			module.addRule(label, new ExprSemiring(JUMP, JumpType.THROW, cond), 
+					Condition.CONTAINS, candidates);
+			module.addRule(label, new ExprSemiring(JUMP, Jump.THROW, cond), 
 					TranslatorUtils.formatName(name, e.getHandlerPc()));
 			
 			// Updates handled
@@ -499,13 +496,13 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// Propagates exceptions if not handled
 		handled.add(0);
-		Condition cond = new Condition(ConditionType.NOTCONTAINS, handled);
+		Condition cond = new Condition(Condition.NOTCONTAINS, handled);
 		String label1 = getFreshReturnLabel();
-		module.addRule(label, new ExprSemiring(JUMP, JumpType.ONE, cond), label1);
+		module.addRule(label, new ExprSemiring(JUMP, Jump.ONE, cond), label1);
 		
 		String label2 = getFreshReturnLabel();
 		module.addRule(label1, new ExprSemiring(
-				GLOBALSTORE, new ExprSemiring.Field(CategoryType.ONE, Remopla.e)),
+				GLOBALSTORE, new Field(Category.ONE, Remopla.e)),
 				label2);
 		
 		returnExpr(translator, d, label2);
@@ -514,21 +511,21 @@ public class MethodTranslator implements ModuleMaker {
 	private void array(Translator translator, ExprSemiring d,
 			String label, String nextlabel) {
 		
-		int category = ((ExprSemiring.CategoryType) d.value).intValue();
+		int category = ((Category) d.value).intValue();
 //		int depth = (d.type == ExprType.ARRAYLOAD) ? category : category + 1;
 		int depth = (d.type == ExprType.ARRAYLOAD) ? 1 : category + 1;
 		npe(label, depth);
 		
 		String error = LabelUtils.formatIoobName(label);
 		module.addSharedRule(label, 
-				new ExprSemiring(IOOB, new ExprSemiring.Npe(depth)), 
+				new ExprSemiring(IOOB, new Npe(depth)), 
 				error);
 		module.addRule(error, ERROR, error);
 		
 		module.addSharedRule(label, d, nextlabel);
 	}
 	
-	private void poppushfield(ExprType type, int cat, String label, String nextlabel) {
+	private void poppushfield(int type, int cat, String label, String nextlabel) {
 		module.addSharedRule(label, 
 				new ExprSemiring(POPPUSH, 
 						new Poppush(
@@ -551,7 +548,7 @@ public class MethodTranslator implements ModuleMaker {
 		String[] ref = (String[]) d.value;
 		Translator.log("\tref: %s%n", Arrays.toString(ref));
 		String eref0 = StubManager.removeStub(ref[0]);
-		CategoryType cat = TranslatorUtils.getCategory(ref[2]);
+		Category cat = TranslatorUtils.getCategory(ref[2]);
 		
 		// Adds goto NPE
 		npe(label, (d.type == ExprType.FIELDLOAD) ? 0 : cat.intValue());
@@ -569,7 +566,7 @@ public class MethodTranslator implements ModuleMaker {
 		String fieldName = resolveFieldName(coll, ref[1], translator);//FieldTranslator.formatName(coll.getName(), ref[1]);
 		HashSet<ClassTranslator> supers = getSuperClassesUntil(eref0, coll, translator);
 //		ClassTranslator sup = findSuperClassHavingField(coll, ref[1], translator);
-		HashSet<ClassTranslator> subs = coll.getSubClasses();
+		Set<ClassTranslator> subs = coll.getSubClasses();
 		boolean hasCond = supers.size() > 1 || subs != null;
 		int baseid = translator.getObjectBaseId();
 		
@@ -585,10 +582,10 @@ public class MethodTranslator implements ModuleMaker {
 			}
 			Condition cond = null;
 			if (hasCond)
-				cond = new Condition(ConditionType.CONTAINS, setOf(superColl.getId()));
+				cond = new Condition(Condition.CONTAINS, setOf(superColl.getId()));
 			module.addSharedRule(label, 
 					new ExprSemiring(d.type, 
-							new ExprSemiring.Field(cat, baseid + field.getId()), 
+							new Field(cat, baseid + field.getId()), 
 							cond), 
 					nextlabel);
 			added = true;
@@ -606,10 +603,10 @@ public class MethodTranslator implements ModuleMaker {
 		for (ClassTranslator subColl : subs) {
 			field = subColl.getInstanceFieldTranslator(fieldName);
 			if (field == null) continue;
-			Condition cond = new Condition(ConditionType.CONTAINS, setOf(subColl.getId()));
+			Condition cond = new Condition(Condition.CONTAINS, setOf(subColl.getId()));
 			module.addSharedRule(label, 
 					new ExprSemiring(d.type, 
-							new ExprSemiring.Field(cat, baseid + field.getId()), 
+							new Field(cat, baseid + field.getId()), 
 							cond), 
 					nextlabel);
 			added = true;
@@ -643,13 +640,29 @@ public class MethodTranslator implements ModuleMaker {
 		return set;
 	}
 	
-	private void poppushstatic(ExprType type, int cat, String label, String nextlabel) {
+	private void poppushstatic(int type, int cat, String label, String nextlabel) {
 		module.addSharedRule(label, 
 				new ExprSemiring(POPPUSH, 
 						new Poppush(
 						(type == ExprType.GLOBALLOAD) ? 0 : cat, 
 						(type == ExprType.GLOBALLOAD) ? cat : 0)), 
 				nextlabel);
+	}
+	
+	private boolean callClinit(Translator translator, ClassTranslator ct) {
+		/*
+		 * Invokes static initializer if:
+		 * 	(1) translator included it,
+		 *  (2) the field (or the method to be called) 
+		 *  	does not belong to the starting class (because
+		 *  	it's already included), and
+		 *  (3) the initializer is not this method.
+		 */
+		boolean cond1 = ct.containsClinit();
+		boolean cond2 = !translator.getInitClassName().equals(ct.getName());
+		boolean cond3 = !isClinitOf(ct.getName());
+		log("\tcond1: %b, cond2: %b, cond3: %b%n", cond1, cond2, cond3);
+		return cond1 && cond2 && cond3;
 	}
 	
 	/**
@@ -668,7 +681,7 @@ public class MethodTranslator implements ModuleMaker {
 		ClassTranslator coll = translator.getClassTranslator(ref[0]);
 		
 		// If the class is ignored, pushes nondeterministically
-		CategoryType cat = TranslatorUtils.getCategory(ref[2]);
+		Category cat = TranslatorUtils.getCategory(ref[2]);
 		if (coll == null) {
 //			module.addRule(label, 
 //					new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE)), 
@@ -692,25 +705,14 @@ public class MethodTranslator implements ModuleMaker {
 			}
 		}
 		
-		d.value = new ExprSemiring.Field(cat, name);
+		d.value = new Field(cat, name);
 
-		/*
-		 * Invokes static initializer if:
-		 * 	(1) translator included it,
-		 *  (2) the field does not belong to the starting class (because
-		 *  	it's already included), and
-		 *  (3) the initializer is not this method.
-		 */
-		boolean cond1 = coll.containsClinit();
-		boolean cond2 = !translator.getInitClassName().equals(coll.getName());
-		boolean cond3 = !isClinitOf(coll.getName());
-		log("\tcond1: %b, cond2: %b, cond3: %b%n", cond1, cond2, cond3);
-		if (cond1 && cond2 && cond3) {
+		if (callClinit(translator, coll)) {
 			
 			// <p, label> -> <p, clinit0 ret0> (INVOKE, 0, (global, EQ))
 			String ret0 = getFreshReturnLabel();
 			module.addRule(label, 
-					new ExprSemiring(INVOKE, new ExprSemiring.Invoke(), new Condition(ConditionType.ZERO, coll.getName())), 
+					new ExprSemiring(INVOKE, new Invoke(), new Condition(Condition.ZERO, coll.getName())), 
 					TranslatorUtils.formatName(coll.getName(), "<clinit>", "()V", 0), 
 					ret0);
 			
@@ -720,7 +722,7 @@ public class MethodTranslator implements ModuleMaker {
 			if (!field.isFinal()) r.setGlobal(true);
 			module.addRule(r);
 			
-			d.aux = new Condition(ConditionType.ONE, coll.getName());
+			d.aux = new Condition(Condition.ONE, coll.getName());
 		}
 		
 		// <p, label> -> <p, nextlabel> (GLOBALLOAD/GLOBALSTORE, var, (global, NE))
@@ -734,7 +736,7 @@ public class MethodTranslator implements ModuleMaker {
 		String freshlabel = getFreshReturnLabel();
 		module.addSharedRule(label, 
 				new ExprSemiring(ExprType.FIELDLOAD, 
-						new ExprSemiring.Field(CategoryType.ONE, 0)), 
+						new Field(Category.ONE, 0)), 
 				freshlabel);
 		module.addRule(freshlabel, d, nextlabel);
 	}
@@ -753,17 +755,17 @@ public class MethodTranslator implements ModuleMaker {
 			String label1 = getFreshReturnLabel();
 			module.addSharedRule(label, 
 					new ExprSemiring(MONITORENTER, 
-							new ExprSemiring.Monitorenter(
-									ExprSemiring.Monitorenter.Type.TOUCH, nargs)), 
+							new Monitorenter(
+									Monitorenter.Type.TOUCH, nargs)), 
 					label1);
 			label = label1;
 		}
 		
 		// Creates new semiring (with invoke condition if cond is true)
 		ExprSemiring newd = new ExprSemiring(INVOKE, 
-				new ExprSemiring.Invoke(false, nargs));
+				new Invoke(false, nargs));
 		if (cond) {
-			newd.aux  = new Condition(ConditionType.CONTAINS, setOf(id));
+			newd.aux  = new Condition(Condition.CONTAINS, setOf(id));
 		}
 		
 		// Invokes the method
@@ -797,12 +799,12 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// [Exception] GLOBALLOAD pushes the status variable (e)
 		module.addRule(label, new ExprSemiring(GLOBALLOAD, 
-				new ExprSemiring.Field(CategoryType.ONE, Remopla.e)), n2);
+				new Field(Category.ONE, Remopla.e)), n2);
 		
 		// [Exception] Continues if the status is zero
-		Condition cond = new Condition(ConditionType.CONTAINS, 
+		Condition cond = new Condition(Condition.CONTAINS, 
 				new HashSet<Integer>(Arrays.asList(0)));
-		module.addRule(n2, new ExprSemiring(JUMP, JumpType.ONE, cond), n3);
+		module.addRule(n2, new ExprSemiring(JUMP, Jump.ONE, cond), n3);
 		
 		// [Exception] THROW if the status non-zero
 		athrow(translator, new ExprSemiring(RETURN, new Return(Return.Type.VOID)), n2, offset, cp);
@@ -902,39 +904,27 @@ public class MethodTranslator implements ModuleMaker {
 		int nargs = TranslatorUtils.countParams(called[2]);
 		boolean isVoid = TranslatorUtils.isVoid(called[2]);
 		
-		/*
-		 * Invokes static initializer if:
-		 * 	(1) translator included it,
-		 *  (2) the to-call class is not the starting class (because
-		 *  	it's already included), and
-		 *  (3) the initializer is not this method.
-		 */
-		boolean cond1 = coll.containsClinit();
-		boolean cond2 = !translator.getInitClassName().equals(coll.getName());
-		boolean cond3 = !isClinitOf(coll.getName());
-		log("\tcond1: %b, cond2: %b, cond3: %b%n", cond1, cond2, cond3);
-		boolean clinit = cond1 && cond2 && cond3;
-		
 		// Invokes static initializer (if any)
 		String ret0 = null;
 		ExprSemiring d1 = null;
+		boolean clinit = callClinit(translator, coll);
 		if (clinit) {
 			// <p, label> -> <p, clinit0 ret0> (INVOKE, 0, (global, EQ))
 			ret0 = getFreshReturnLabel();
-			Semiring newd = new ExprSemiring(INVOKE, new ExprSemiring.Invoke(), 
-					new Condition(ConditionType.ZERO, called[0]));
+			Semiring newd = new ExprSemiring(INVOKE, new Invoke(), 
+					new Condition(Condition.ZERO, called[0]));
 			module.addRule(label, 
 					newd,
 					TranslatorUtils.formatName(clinitOf(called[0]), 0), 
 					ret0);
 			
-			d.aux = new Condition(ConditionType.ONE, called[0]);
+			d.aux = new Condition(Condition.ONE, called[0]);
 			d1 = new ExprSemiring(INVOKE, 
-					new ExprSemiring.Invoke(true, nargs));
+					new Invoke(true, nargs));
 		}
 		
 		// Invokes the method
-		d.value = new ExprSemiring.Invoke(true, nargs);
+		d.value = new Invoke(true, nargs);
 		fname = TranslatorUtils.formatName(fname, 0);
 		String freshlabel = getFreshReturnLabel();
 		if (isVoid) {
@@ -985,18 +975,18 @@ public class MethodTranslator implements ModuleMaker {
 					invoke(translator, equals, label, freshlabel, sub, sub.getId(), true);
 				}
 				
-				addAssertRules(freshlabel, CompType.NE, nextlabel, label, CompType.EQ);
+				addAssertRules(freshlabel, Comp.NE, nextlabel, label, Comp.EQ);
 				return;
 			}
 		}
 		
 		if (called[1].equals("assertFalse")) {
-			addAssertRules(label, CompType.EQ, nextlabel, label, CompType.NE);
+			addAssertRules(label, Comp.EQ, nextlabel, label, Comp.NE);
 			return;
 		}
 		
 		if (called[1].equals("assertTrue")) {
-			addAssertRules(label, CompType.NE, nextlabel, label, CompType.EQ);
+			addAssertRules(label, Comp.NE, nextlabel, label, Comp.EQ);
 			return;
 		}
 		
@@ -1010,7 +1000,7 @@ public class MethodTranslator implements ModuleMaker {
 		if (called[1].equals("nint")) {
 			
 			module.addRule(label, 
-					new ExprSemiring(ARITH, ArithType.NDT, CategoryType.ONE), 
+					new ExprSemiring(ARITH, new Arith(Arith.NDT, Category.ONE)), 
 					nextlabel);
 			return;
 		}
@@ -1019,8 +1009,8 @@ public class MethodTranslator implements ModuleMaker {
 				+ Arrays.toString(called));
 	}
 	
-	private void addAssertRules(String fromlabel, CompType truebranch, 
-			String nextlabel, String badlabel, CompType falsebranch) {
+	private void addAssertRules(String fromlabel, int truebranch, 
+			String nextlabel, String badlabel, int falsebranch) {
 		
 		// True branch
 		module.addRule(fromlabel, 
@@ -1059,64 +1049,17 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// Creates new semiring (with condition CONTAINS)
 		ExprSemiring newd = new ExprSemiring(DYNAMIC, 
-				new ExprSemiring.Invoke(false, 1), 
-				new Condition(ConditionType.CONTAINS, setOf(id)));
+				new Invoke(false, 1), 
+				new Condition(Condition.CONTAINS, setOf(id)));
 		
 		// <p, label> -> <p, nextlabel> |> <p, fname> (DYNAMIC, null, (CONTAINS, id))
 		module.addDynamicRule(label, newd, nextlabel, fname);
 	}
 	
-	private boolean handleObjectMethods(Translator translator, String[] called, 
-			String label, String nextlabel) {
-		
-		if (!called[0].equals("java/lang/Object")) return false;
-		
-		if (called[1].equals("getClass")) {
-			module.addRule(label, new ExprSemiring(HEAPLOAD), nextlabel);
-			return true;
-		}
-		
-		if (called[1].equals("wait")) {
-			String freshlabel = getFreshReturnLabel();
-			if (translator.multithreading()) {
-				module.addSharedRule(label, new ExprSemiring(WAITINVOKE), freshlabel);
-				module.addSharedRule(freshlabel, new ExprSemiring(WAITRETURN), nextlabel);
-			} else {
-				module.addRule(label, new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), freshlabel);
-				module.addRule(freshlabel, new ExprSemiring(JUMP, JumpType.ONE), freshlabel);
-			}
-			return true;
-		}
-		
-		if (called[1].equals("notify")) {
-			if (translator.multithreading()) {
-				module.addSharedRule(label, 
-						new ExprSemiring(NOTIFY, ExprSemiring.NotifyType.NOTIFY), 
-						nextlabel);
-			} else {
-				module.addRule(label, new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), nextlabel);
-			}
-			return true;
-		}
-		
-		if (called[1].equals("notifyAll")) {
-			if (translator.multithreading()) {
-				module.addSharedRule(label, 
-						new ExprSemiring(NOTIFY, ExprSemiring.NotifyType.NOTIFYALL), 
-						nextlabel);
-			} else {
-				module.addRule(label, new ExprSemiring(POPPUSH, new ExprSemiring.Poppush(1, 0)), nextlabel);
-			}
-			return true;
-		}
-		
-		return false;
-	}
-	
 	private void poppush(String label, String desc, boolean stc, String nextlabel) {
 		
 		log("\tpoppush(%s, %s, %b, %s)%n", label, desc, stc, nextlabel);
-		module.addRule(label, POPPUSH, new ExprSemiring.Poppush(
+		module.addRule(label, POPPUSH, new Poppush(
 				TranslatorUtils.countParams(desc) + ((stc) ? 0 : 1), 
 				TranslatorUtils.getReturnCategory(desc).intValue()), 
 				nextlabel);
@@ -1144,8 +1087,9 @@ public class MethodTranslator implements ModuleMaker {
 		// Adds goto NPE
 		npe(label, TranslatorUtils.countParams(called[2]));
 		
-		// Handles methods of Object (if it is the case)
-		if (handleObjectMethods(translator, called, label, nextlabel)) return;
+		// Bypasses if possible
+		if (Bypasser.bypass(module, translator, called, label, nextlabel)) 
+			return;
 		
 		/* 
 		 * Finds the first super class that has the method, in case the called
@@ -1200,33 +1144,19 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// Bypasses, if the class is ignored
 		if (coll == null) {
-			module.addRule(label, PUSH, new ExprSemiring.Value(CategoryType.ONE), nextlabel);
+			module.addRule(label, PUSH, new Value(Category.ONE), nextlabel);
 			return;
 		}
 		
-		/*
-		 * Invokes static initializer if:
-		 * 	(1) translator included it,
-		 *  (2) the to-call class is not the starting class (because
-		 *  	it's already included), and
-		 *  (3) the initializer is not this method.
-		 */
-		boolean cond1 = coll.containsClinit();
-		boolean cond2 = !translator.getInitClassName().equals(coll.getName());
-		boolean cond3 = !isClinitOf(coll.getName());
-		log("\tcond1: %b, cond2: %b, cond3: %b%n", cond1, cond2, cond3);
-		boolean clinit = cond1 && cond2 && cond3;
-		
-		
 		int id = coll.getId();
 		int size = translator.getObjectBaseId() + coll.size();
-		d.value = new ExprSemiring.New(id, size);
+		d.value = new New(id, size);
 		
 		// Heap overflow
 		heapoverflow(label, NEW, d.value);
 		
 		// In case of NOT including static initializer
-		if (!clinit) {
+		if (!callClinit(translator, coll)) {
 			
 			// <p, label> -> <p, nextlabel> (NEW, (id, size))
 			module.addSharedRule(label, d, nextlabel);
@@ -1237,25 +1167,25 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// <p, label> -> <p, clinit0 ret0> (INVOKE, 0, (ZERO, className))
 		String ret0 = getFreshReturnLabel();
-		Semiring newd = new ExprSemiring(INVOKE, new ExprSemiring.Invoke(), 
-				new Condition(ConditionType.ZERO, className));
+		Semiring newd = new ExprSemiring(INVOKE, new Invoke(), 
+				new Condition(Condition.ZERO, className));
 		module.addRule(label, 
 				newd,
 				TranslatorUtils.formatName(clinitOf(className), 0), 
 				ret0);
 		
 		// <p, ret0> -> <p, nextlabel> (NEW, (id, size))
-		newd = new ExprSemiring(NEW, new ExprSemiring.New(id, size));
+		newd = new ExprSemiring(NEW, new New(id, size));
 		module.addRule(ret0, newd, nextlabel);
 		
 		// <p, label> -> <p, nextlabel> (NEW, (id, size), (ONE, className))
 		newd = new ExprSemiring(NEW, 
-				new ExprSemiring.New(id, size),
-				new Condition(ConditionType.ONE, className));
+				new New(id, size),
+				new Condition(Condition.ONE, className));
 		module.addRule(label, newd, nextlabel);
 	}
 	
-	private void heapoverflow(String label, ExprType type, Object value) {
+	private void heapoverflow(String label, int type, Object value) {
 		String holabel = LabelUtils.formatHeapOverflowName(label);
 		module.addSharedRule(label, 
 				new ExprSemiring(HEAPOVERFLOW, type, value), 
@@ -1267,7 +1197,7 @@ public class MethodTranslator implements ModuleMaker {
 		
 		String npelabel = LabelUtils.formatNpeName(label);
 		module.addSharedRule(label, 
-				new ExprSemiring(NPE, new ExprSemiring.Npe(depth)), 
+				new ExprSemiring(NPE, new Npe(depth)), 
 				npelabel);
 		module.addRule(npelabel, ERROR, npelabel);
 	}
@@ -1286,12 +1216,65 @@ public class MethodTranslator implements ModuleMaker {
 		// Pushes nextlabel's index and saves it in the jump table
 		String freshlabel = getFreshReturnLabel();
 		module.addRule(label, 
-				new ExprSemiring(PUSH, new Value(jsrtable.size())), 
+				new ExprSemiring(PUSH, new Value(Category.ONE, jsrtable.size())), 
 				freshlabel);
 		jsrtable.add(nextlabel);
 		
 		// Jumps
 		module.addRule(freshlabel, d, TranslatorUtils.branchTarget(name, ainst));
+	}
+	
+	private void ldc(Translator translator, ExprSemiring d, 
+			String label, String nextlabel, AbstractInstruction ainst, CPInfo[] cp) {
+		
+		int i = InstructionTranslator.immediateLdc(ainst);
+		if (cp[i].getTag() == CPInfo.CONSTANT_CLASS) {
+			ClassTranslator ct = translator.getClassTranslator(cp, i);
+			if (ct == null) {	// FIXME
+				module.addRule(label, d, nextlabel);
+				return;
+			}
+			
+			// In case of NOT including static initializer
+			if (!callClinit(translator, ct)) {
+				
+				// <p, label> -> <p, nextlabel> (PUSH, ct.getId()))
+				module.addSharedRule(label, d, nextlabel);
+				return;
+			}
+			
+			// In case of including static initializer
+			
+			// <p, label> -> <p, clinit0 ret0> (INVOKE, 0, (ZERO, className))
+			String ret0 = getFreshReturnLabel();
+			Semiring newd = new ExprSemiring(INVOKE, new Invoke(), 
+					new Condition(Condition.ZERO, ct.getName()));
+			module.addRule(label, 
+					newd,
+					TranslatorUtils.formatName(clinitOf(ct.getName()), 0), 
+					ret0);
+			
+			// <p, ret0> -> <p, nextlabel> (PUSH, ct.getId())
+			module.addRule(ret0, d, nextlabel);
+			
+			// <p, label> -> <p, nextlabel> (PUSH, ct.getId(), (ONE, className))
+			newd = new ExprSemiring(PUSH, 
+					new Value(Category.ONE, ct.getId()),
+					new Condition(Condition.ONE, ct.getName()));
+			module.addRule(label, newd, nextlabel);
+			
+			return;
+		}
+		
+		// Replaces Integer.MAX_VALUE
+		Value value = (Value) d.value;
+		if (translator.nondeterministic() && value.isInteger()) {
+			if (value.intValue() == Integer.MAX_VALUE)
+				value.setValue((1 << (translator.getBits() - 1)) - 1);
+			if (value.intValue() == Integer.MIN_VALUE)
+				value.setValue(-(1 << (translator.getBits() - 1)));
+		}
+		module.addRule(label, d, nextlabel);
 	}
 	
 	private void ret(ExprSemiring d, String label) {
@@ -1324,14 +1307,14 @@ public class MethodTranslator implements ModuleMaker {
 		for (MatchOffsetPair pair : pairs) {
 			
 			module.addRule(label, 
-					new ExprSemiring(IF, new ExprSemiring.If(pair.getMatch())),
+					new ExprSemiring(IF, new If(If.IS, pair.getMatch())),
 					TranslatorUtils.formatName(name, offset + pair.getOffset()));
 			set.add(pair.getMatch());
 		}
 		
 		// Default case
 		module.addRule(label,
-				new ExprSemiring(IF, new ExprSemiring.If(set)),
+				new ExprSemiring(IF, new If(set)),
 				TranslatorUtils.formatName(name, offset + inst.getDefaultOffset()));
 	}
 	
@@ -1347,13 +1330,13 @@ public class MethodTranslator implements ModuleMaker {
 		for (int i = 0; i <= highByte - lowByte; i++) {
 			
 			module.addRule(label, 
-					new ExprSemiring(IF, new ExprSemiring.If(lowByte + i)),
+					new ExprSemiring(IF, new If(If.IS, lowByte + i)),
 					TranslatorUtils.formatName(name, offset + jumpOffsets[i]));
 		}
 		
 		// Default case
 		module.addRule(label,
-				new ExprSemiring(IF, new ExprSemiring.If(lowByte, highByte)),
+				new ExprSemiring(IF, new If(If.LG, lowByte, highByte)),
 				TranslatorUtils.formatName(name, offset + inst.getDefaultOffset()));
 	}
 	
@@ -1365,7 +1348,7 @@ public class MethodTranslator implements ModuleMaker {
 		}
 		String label1 = getFreshReturnLabel();
 		String label2 = getFreshReturnLabel();
-		module.addRule(label, new ExprSemiring(LOAD, new Local(CategoryType.ONE, 0)), label1);
+		module.addRule(label, new ExprSemiring(LOAD, new Local(Category.ONE, 0)), label1);
 		module.addSharedRule(label1, new ExprSemiring(MONITOREXIT), label2);
 		module.addRule(label2, d);
 		return;
@@ -1437,7 +1420,7 @@ public class MethodTranslator implements ModuleMaker {
 		if (coll.contains(coll.getName(), methodName, methodDesc))
 			set.add(coll);
 		
-		HashSet<ClassTranslator> subs = coll.getSubClasses();
+		Set<ClassTranslator> subs = coll.getSubClasses();
 		if (subs == null) return;
 		for (ClassTranslator sub : subs) {
 			fillSubClassesHavingMethod(set, sub, methodName, methodDesc, translator);
@@ -1454,36 +1437,36 @@ public class MethodTranslator implements ModuleMaker {
 	 * @param opcode the opcode.
 	 * @return the opposite comparison type.
 	 */
-	private CompType negate(int opcode) {
+	private int negate(int opcode) {
 		
 		switch (opcode) {
 		case Opcodes.OPCODE_IF_ACMPEQ: 
 		case Opcodes.OPCODE_IF_ICMPEQ: 
 		case Opcodes.OPCODE_IFEQ:
 		case Opcodes.OPCODE_IFNULL:
-			return CompType.NE;
+			return Comp.NE;
 			
 		case Opcodes.OPCODE_IF_ACMPNE:
 		case Opcodes.OPCODE_IF_ICMPNE:
 		case Opcodes.OPCODE_IFNE:
 		case Opcodes.OPCODE_IFNONNULL:
-			return CompType.EQ;
+			return Comp.EQ;
 			
 		case Opcodes.OPCODE_IF_ICMPLT:
 		case Opcodes.OPCODE_IFLT:
-			return CompType.GE;
+			return Comp.GE;
 			
 		case Opcodes.OPCODE_IF_ICMPGE:
 		case Opcodes.OPCODE_IFGE:
-			return CompType.LT;
+			return Comp.LT;
 			
 		case Opcodes.OPCODE_IF_ICMPGT:
 		case Opcodes.OPCODE_IFGT:
-			return CompType.LE;
+			return Comp.LE;
 			
 		case Opcodes.OPCODE_IF_ICMPLE:
 		case Opcodes.OPCODE_IFLE:
-			return CompType.GT;
+			return Comp.GT;
 		}
 		
 		throw new IllegalArgumentException("Illegal opcode: " + opcode);
@@ -1495,13 +1478,12 @@ public class MethodTranslator implements ModuleMaker {
 	}
 	
 	private static void log(String msg, Object... args) {
-		
 		Translator.log(msg, args);
 	}
 	
 	private final static String RET = "ret";
 	private static int retcount = 0;
-	private String getFreshReturnLabel() {
+	public static String getFreshReturnLabel() {
 		return RET + retcount++;
 	}
 }
