@@ -31,7 +31,7 @@ import org.gjt.jclasslib.structures.constants.ConstantUtf8Info;
 
 import de.tum.in.jmoped.translator.stub.StubManager;
 import de.tum.in.jmoped.underbone.LabelUtils;
-import de.tum.in.jmoped.underbone.ExprSemiring.CategoryType;
+import de.tum.in.jmoped.underbone.expr.Category;
 
 /**
  * The translator's utility class.
@@ -453,12 +453,12 @@ public class TranslatorUtils {
 	 * @param type the variable type.
 	 * @return the category of variable type.
 	 */
-	public static CategoryType getCategory(String type) {
+	public static Category getCategory(String type) {
 		if (type.equals("V"))
-			return CategoryType.ZERO;
+			return Category.ZERO;
 		if (type.equals("J") || type.equals("D"))
-			return CategoryType.TWO;
-		return CategoryType.ONE;
+			return Category.TWO;
+		return Category.ONE;
 	}
 	
 	/**
@@ -479,7 +479,7 @@ public class TranslatorUtils {
 	 * @param desc the method's descriptor.
 	 * @return the category of the return type from the method descriptor.
 	 */
-	public static CategoryType getReturnCategory(String desc) {
+	public static Category getReturnCategory(String desc) {
 		return getCategory(getReturnType(desc));
 	}
 	

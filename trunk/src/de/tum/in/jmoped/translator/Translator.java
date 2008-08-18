@@ -24,6 +24,7 @@ import org.gjt.jclasslib.structures.MethodInfo;
 import org.gjt.jclasslib.structures.attributes.CodeAttribute;
 import org.gjt.jclasslib.structures.attributes.ExceptionTableEntry;
 import org.gjt.jclasslib.structures.constants.ConstantClassInfo;
+import org.gjt.jclasslib.structures.constants.ConstantUtf8Info;
 
 import de.tum.in.jmoped.translator.stub.StubManager;
 import de.tum.in.jmoped.underbone.LabelUtils;
@@ -324,6 +325,20 @@ public class Translator {
 		if (ct != null) return ct;
 		
 		return included.get(StubManager.removeStub(className));
+	}
+	
+	/**
+	 * Returns the class translator specified by the element <code>i</code>
+	 * of the constant pool <code>cp</code>.
+	 * 
+	 * @param cp the constant pool.
+	 * @param i the constant pool index.
+	 * @return the class translator.
+	 */
+	public ClassTranslator getClassTranslator(CPInfo[] cp, int i) {
+		int index = ((ConstantClassInfo) cp[i]).getNameIndex();
+		String string = ((ConstantUtf8Info) cp[index]).getString();
+		return getClassTranslator(string);
 	}
 	
 	/**

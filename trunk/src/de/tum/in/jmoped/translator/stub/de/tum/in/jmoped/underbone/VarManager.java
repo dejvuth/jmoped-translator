@@ -9,24 +9,60 @@ import de.tum.in.jmoped.underbone.Variable;
 
 public class VarManager {
 	
-	BDDFactory factory;
+	// BDDFactory
+	private BDDFactory factory;
 	
-	int spDomIndex;
-	int sDomIndex;
+	// Starting domain index of locals
+	private int l0;
+	
+	// Stack pointer domain index
+	private int spDomIndex;
+	
+	// Stack domain index
+	private int sDomIndex;
+	
+	// Local variable domain index
+	private int lvDomIndex;
 	
 	BDDDomain[] doms;
+	
+	private static final int varcopy = 3;
+	private static final int globalcopy = 3;
+	
 
 	public VarManager(String bddpackage, int nodenum, int cachesize, 
 			int bits, long[] heapSizes, Collection<Variable> g, 
 			int smax, int lvmax, int tbound, boolean lazy) {
 		
-		int size = 1;
-		for (int i = 0; i < bits; i++)
-			size *= 2;
+		int size = 1 << bits;
+//		for (int i = 0; i < bits; i++)
+//			size *= 2;
 		
-		long[] domSize = new long[smax + 1];
+		// Prepares array for domains
+		int s = smax + varcopy*lvmax;
+		if (smax > 0) s++;	// for stack pointer
+		int heapLength = (heapSizes == null) ? 0 : heapSizes.length;
+		if (heapLength > 1) s += globalcopy*(heapLength + 1);
+		if (g != null && !g.isEmpty()) {
+			s += globalcopy*g.size();
+		}
+		s++;	// ret var
+		long[] domSize = new long[s];
 		
 		int index = 0;
+		
+		// Local vars
+		l0 = index;
+		if (lvmax > 0) {
+			
+			lvDomIndex = index;
+			for (int i = 0; i < lvmax; i++) {
+				for (int j = 0; j < varcopy; j++)
+					domSize[index++] = size;
+			}
+		} else {
+			lvDomIndex = -1;
+		}
 		
 		// Stack
 		if (smax > 0) {
@@ -63,8 +99,24 @@ public class VarManager {
 		return doms[spDomIndex];
 	}
 	
+	/**
+	 * Gets the <code>BDDDomain</code> of the stack element at <code>index</code>.
+	 * 
+	 * @param index the stack element index.
+	 * @return the <code>BDDDomain</code> of the stack element.
+	 */
 	public BDDDomain getStackDomain(int index) {
 		return doms[sDomIndex + index];
+	}
+	
+	/**
+	 * Gets the <code>BDDDomain</code> of the local variable at <code>index</code>.
+	 * 
+	 * @param index the stack element index.
+	 * @return the <code>BDDDomain</code> of the local variable.
+	 */
+	public BDDDomain getLocalVarDomain(int index) {
+		return doms[lvDomIndex + varcopy*index];
 	}
 	
 	public BDD bddRange(BDDDomain dom, int min, int max) {
