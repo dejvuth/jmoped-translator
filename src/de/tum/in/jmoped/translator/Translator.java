@@ -79,11 +79,11 @@ public class Translator {
 	private int tbound;
 	
 	/**
-	 * Determines if whether to handle context-switches symbolically.
+	 * Determines if whether to handle context-switches lazily.
 	 * Its content is meaningless is meaningless in the case of single-thread.
 	 * Initialized by a call to {@link #translate(int, int, boolean, int, boolean)}.
 	 */
-	private boolean symbolic;
+	private boolean lazy;
 	
 	/**
 	 * The logger.
@@ -169,12 +169,12 @@ public class Translator {
 	}
 	
 	/**
-	 * Returns <code>true</code> if context-switches are symbolic.
+	 * Returns <code>true</code> if switching contexts lazily.
 	 * 
-	 * @return <code>true</code> if context-switches are symbolic.
+	 * @return <code>true</code> if switching contexts lazily.
 	 */
-	public boolean symbolic() {
-		return symbolic;
+	public boolean lazy() {
+		return lazy;
 	}
 	
 	/**
@@ -187,7 +187,7 @@ public class Translator {
 	 * @return
 	 * @throws InvalidByteCodeException 
 	 */
-	public Remopla translate(int bits, int heapSize, boolean nondet, int tbound, boolean symbolic)
+	public Remopla translate(int bits, int heapSize, boolean nondet, int tbound, boolean lazy)
 			throws InvalidByteCodeException {
 
 		log("bits: %d, heapSize: %d, nondet: %b, tbound: %d%n", 
@@ -195,7 +195,7 @@ public class Translator {
 		this.bits = bits;
 		this.nondet = nondet;
 		this.tbound = tbound;
-		this.symbolic = symbolic;
+		this.lazy = lazy;
 		
 		// Calculates default heap size
 		long[] heap = new long[heapSize];

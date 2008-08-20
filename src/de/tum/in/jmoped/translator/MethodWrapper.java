@@ -168,7 +168,7 @@ public class MethodWrapper {
 			sizes.add(new Long(2*(length + 1))); // + 1 because size tells no. of possibilities
 			
 			// Owner & counter
-			if (translator.multithreading() && translator.symbolic()) {
+			if (translator.multithreading() && translator.lazy()) {
 				sizes.add(defaultsize);
 				sizes.add(defaultsize);
 			}
