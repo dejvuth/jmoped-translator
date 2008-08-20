@@ -12,14 +12,17 @@ public class BDDVarSet {
 
 	public BDDVarSet unionWith(BDDVarSet that) {
 		
-		Node node = lastNode();
-		
-		if (node.high == 1)
-			node.high = that.u;
-		else
-			node.low = that.u;
-		
+		u = BDD.applyWith(BDD.AND, u, that.u);
 		return this;
+		
+//		Node node = lastNode();
+//		
+//		if (node.high == 1)
+//			node.high = that.u;
+//		else
+//			node.low = that.u;
+//		
+//		return this;
 	}
 	
 	public int getNode() {

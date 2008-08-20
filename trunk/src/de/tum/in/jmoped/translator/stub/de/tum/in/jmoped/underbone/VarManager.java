@@ -83,7 +83,7 @@ public class VarManager {
 			sDomIndex = -1;
 		}
 		
-		factory = new BDDFactory(nodenum);
+		factory = BDDFactory.init(null, nodenum, 0);
 		doms = factory.extDomain(domSize);
 	}
 	

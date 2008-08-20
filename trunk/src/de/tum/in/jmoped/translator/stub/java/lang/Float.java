@@ -27,11 +27,16 @@ public class Float extends Number {
 	public long longValue() {
 		return (long) value;
 	}
-
+	
 	public boolean equals(java.lang.Object o) {
+		if (o == null) return false;
 //		if (!(o instanceof Float))
 //			return false;
 		
 		return value == ((Float) o).value;
+	}
+	
+	public int hashCode() {
+		return java.lang.Float.floatToIntBits(value);
 	}
 }

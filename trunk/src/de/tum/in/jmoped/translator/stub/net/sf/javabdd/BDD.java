@@ -5,10 +5,14 @@ import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDFactory.Node;
 
 public class BDD {
 
+	/**
+	 * Node.
+	 */
 	int u;
 	
-	private final static int AND = 0;
-	private final static int OR = 1;
+	final static int AND = 0;
+	final static int BIIMP = 1;
+	final static int OR = 2;
 	
 	public BDD(int u) {
 		this.u = u;
@@ -18,13 +22,14 @@ public class BDD {
 		return u;
 	}
 	
-	private static int applyWith(int op, int u1, int u2) {
+	static int applyWith(int op, int u1, int u2) {
 		
 		if (u1 <= 1 && u2 <= 1) {
-			if (op == AND) return u1 & u2;
-			
-			// OR
-			return u1 | u2;
+			switch (op) {
+			case AND: return u1 & u2;
+			case BIIMP: return (u1 == u2) ? 1 : 0;
+			case OR: return u1 | u2;
+			}
 		}
 		
 		Node node1 = BDDFactory.nodes[u1];
@@ -37,10 +42,12 @@ public class BDD {
 					applyWith(op, node1.high, node2.high));
 		
 		if (var1 < var2)
-			return BDDFactory.mk(var1, applyWith(op, node1.low, u2), applyWith(op, node1.high, u2));
+			return BDDFactory.mk(var1, applyWith(op, node1.low, u2), 
+					applyWith(op, node1.high, u2));
 		
 		// var1 > var2
-		return BDDFactory.mk(var2, applyWith(op, u1, node2.low), applyWith(op, u1, node2.high));
+		return BDDFactory.mk(var2, applyWith(op, u1, node2.low), 
+				applyWith(op, u1, node2.high));
 	}
 	
 	public BDD andWith(BDD that) {
@@ -48,9 +55,35 @@ public class BDD {
 		return this;
 	}
 	
+	public BDD biimpWith(BDD that) {
+		u = applyWith(BIIMP, u, that.u);
+		return this;
+	}
+	
 	public BDD orWith(BDD that) {
 		u = applyWith(OR, u, that.u);
 		return this;
+	}
+	
+	private static int not(int index) {
+		if (index == 0) return 1;
+		if (index == 1) return 0;
+		
+		Node node = BDDFactory.nodes[index];
+		return BDDFactory.mk(node.var, not(node.low), not(node.high));
+		
+		
+//		if (node.low == 0) node.low = 1;
+//		else if (node.low == 1) node.low = 0;
+//		else not(node.low);
+//		
+//		if (node.high == 0) node.high = 1;
+//		else if (node.high == 1) node.high = 0;
+//		else not (node.high);
+	}
+	
+	public BDD not() {
+		return new BDD(not(u));
 	}
 	
 	public BDD exist(BDDVarSet varset) {
@@ -69,9 +102,25 @@ public class BDD {
 		return bdd;
 	}
 	
+	public BDDFactory getFactory() {
+		return BDDFactory.factory;
+	}
+	
 	public BDD id() {
 		BDD bdd = new BDD(u);
 		return bdd;
+	}
+	
+	public boolean isZero() {
+		return u == 0;
+	}
+	
+	public boolean isOne() {
+		return u == 1;
+	}
+	
+	public int var() {
+		return  u;
 	}
 	
 	public BDD restrict(int var, boolean value) {
@@ -103,6 +152,14 @@ public class BDD {
 		return BigInteger.valueOf(value);
 	}
 	
+	/**
+	 * Scans this BDD beginning at <code>u</code> for an assignment to
+	 * <code>var</code>. 
+	 * 
+	 * @param u the BDD node where the scan starts.
+	 * @param var the variable to be scanned for.
+	 * @return zero or one.
+	 */
 	private static int scanVar(int u, int var) {
 		Node thisnode = BDDFactory.nodes[u];
 		int thisvar = thisnode.var;
@@ -115,6 +172,58 @@ public class BDD {
 			else return 0;
 		}
 		return 0;
+	}
+	
+	public BDDIterator iterator(BDDVarSet var) {
+		return new BDDIterator(this.id(), var);
+	}
+	
+	public static class BDDIterator {
+		BDD bdd;
+		BDDVarSet varset;
+		
+		BDDIterator(BDD bdd, BDDVarSet varset) {
+			this.bdd = bdd;
+			this.varset = varset;
+		}
+		
+		public boolean hasNext() {
+			return !bdd.isZero();
+		}
+		
+		public BDD nextBDD() {
+			BDDFactory factory = BDDFactory.factory;
+			Node[] nodes = BDDFactory.nodes;
+			
+			// Traverses down through high branch until node one is met
+//			BDD a = factory.one();
+			int a = 1;
+			int current = varset.u;
+			while (current != 1) {
+				int var = nodes[current].var;
+				int s = scanVar(bdd.u, var);
+//				System.out.printf("var:%d s:%d%n", var, s);
+				if (s == 0)
+//					a.andWith(factory.nithVar(var));
+					a = applyWith(AND, a, BDDFactory.mk(var, 1, 0));
+				else
+//					a.andWith(factory.ithVar(var));
+					a = applyWith(AND, a, BDDFactory.mk(var, 0, 1));
+//				System.out.println(a);
+				current = BDDVarSet.next(current);
+			}
+			
+//			System.out.println(a);
+//			BDD nota = a.not();
+//			BDD nota = not(a);
+//			bdd.andWith(nota);
+			bdd.u = applyWith(AND, bdd.u, not(a));
+			return new BDD(a);
+		}
+	}
+	
+	void print() {
+		System.out.print(u);
 	}
 	
 	public String toString() {

@@ -54,17 +54,23 @@ public class Bypasser {
 	static {
 		m.put("Stub", new HashSet<String>(1));
 		
-		HashSet<String> set = new HashSet<String>(3, 0.95f);
+		HashSet<String> set = new HashSet<String>(4, 0.95f);
 		set.add(TranslatorUtils.formatName("java/lang/Class", "getEnumConstants", "()[Ljava/lang/Object;"));
+		set.add(TranslatorUtils.formatName("java/lang/Class", "getName", "()Ljava/lang/String;"));
 		set.add(TranslatorUtils.formatName("java/lang/Class", "getSuperclass", "()Ljava/lang/Class;"));
 		m.put("java/lang/Class", set);
+		
+		set = new HashSet<String>(2);
+		set.add(TranslatorUtils.formatName("java/lang/Float", "floatToIntBits", "(F)I"));
+		m.put("java/lang/Float", set);
 		
 		set = new HashSet<String>(2);
 		set.add(TranslatorUtils.formatName("java/lang/Math", "random", "()D"));
 		m.put("java/lang/Math", set);
 		
-		set = new HashSet<String>(5, 0.95f);
+		set = new HashSet<String>(6, 0.95f);
 		set.add(TranslatorUtils.formatName("java/lang/Object", "getClass", "()Ljava/lang/Class;"));
+//		set.add(TranslatorUtils.formatName("java/lang/Object", "hashCode", "()I"));
 		set.add(TranslatorUtils.formatName("java/lang/Object", "wait", "()V"));
 		set.add(TranslatorUtils.formatName("java/lang/Object", "notify", "()V"));
 		set.add(TranslatorUtils.formatName("java/lang/Object", "notifyAll", "()V"));
@@ -107,6 +113,8 @@ public class Bypasser {
 			bypassStub(module, translator, called, label, nextlabel);
 		} else if (called[0].equals("java/lang/Class")) {
 			bypassClass(module, translator, called, label, nextlabel);
+		} else if (called[0].equals("java/lang/Float")) {
+			bypassFloat(module, translator, called, label, nextlabel);
 		} else if (called[0].equals("java/lang/Math")) {
 			bypassMath(module, translator, called, label, nextlabel);
 		} else if (called[0].equals("java/lang/Object")) {
@@ -166,6 +174,22 @@ public class Bypasser {
 				module.addRule(freshlabel1, new ExprSemiring(ExprType.JUMP, Jump.ONE), nextlabel);
 			}
 			return;
+		} else if (called[1].equals("getName")) {
+			Collection<ClassTranslator> all = translator.getClassTranslators();
+			for (ClassTranslator ct : all) {
+				String freshlabel0 = MethodTranslator.getFreshReturnLabel();
+				module.addRule(label,
+						new ExprSemiring(ExprType.IF, new If(If.IS, ct.getId())),
+						freshlabel0);
+				
+				String freshlabel1 = MethodTranslator.getFreshReturnLabel();
+				module.addRule(freshlabel0,
+						new ExprSemiring(ExprType.PUSH, new Value(ct.getName())),
+						freshlabel1);
+				
+				module.addRule(freshlabel1, new ExprSemiring(ExprType.JUMP, Jump.ONE), nextlabel);
+			}
+			return;
 		} else if (called[1].equals("getSuperclass")) {
 			Collection<ClassTranslator> all = translator.getClassTranslators();
 			for (ClassTranslator ct : all) {
@@ -187,6 +211,19 @@ public class Bypasser {
 				
 				module.addRule(freshlabel1, new ExprSemiring(ExprType.JUMP, Jump.ONE), nextlabel);
 			}
+			return;
+		}
+		
+		error(called);
+	}
+	
+	private static void bypassFloat(Module module,
+			Translator translator, String[] called,
+			String label, String nextlabel) {
+		
+		if (called[1].equals("floatToIntBits")) {
+			module.addRule(label, 
+					new ExprSemiring(ExprType.JUMP, Jump.ONE), nextlabel);
 			return;
 		}
 		
@@ -216,6 +253,11 @@ public class Bypasser {
 			module.addRule(label, new ExprSemiring(HEAPLOAD), nextlabel);
 			return;
 		}
+		
+//		if (called[1].equals("hashCode")) {
+//			module.addRule(label, new ExprSemiring(ExprType.JUMP, Jump.ONE), nextlabel);
+//			return;
+//		}
 		
 		if (called[1].equals("wait")) {
 			String freshlabel = MethodTranslator.getFreshReturnLabel();

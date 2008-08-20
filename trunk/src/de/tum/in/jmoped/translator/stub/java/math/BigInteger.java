@@ -19,4 +19,8 @@ public class BigInteger {
 	public long longValue() {
 		return value;
 	}
+	
+	public boolean equals(Object x) {
+		return value == ((BigInteger) x).value;
+	}
 }
