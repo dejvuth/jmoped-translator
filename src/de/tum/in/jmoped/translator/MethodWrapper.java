@@ -287,7 +287,7 @@ public class MethodWrapper {
 		ExprSemiring d = new ExprSemiring(
 				ExprType.NEW, 
 				new New(
-						ict.getId(), 
+						ict.getId(), ict.getName(),
 						translator.getObjectBaseId() + ict.size()));
 		init.addRule(from, d, to);
 		
@@ -341,7 +341,7 @@ public class MethodWrapper {
 			d = new ExprSemiring(
 					NEW, 
 					new New(
-							ct.getId(), 
+							ct.getId(), ct.getName(),
 							ct.size() + translator.getObjectBaseId()));
 			init.addRule(from, d, to);
 			from = to;

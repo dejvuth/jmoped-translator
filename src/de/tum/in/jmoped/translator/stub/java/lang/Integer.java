@@ -35,9 +35,6 @@ public class Integer extends Number implements Comparable<Integer> {
 	
 	public boolean equals(java.lang.Object o) {
 		if (o == null) return false;
-//		if (!(o instanceof Integer))
-//			return false;
-		
 		return value == ((Integer) o).value;
 	}
 
@@ -45,5 +42,9 @@ public class Integer extends Number implements Comparable<Integer> {
 		if (value == o.value) return 0;
 		if (value < o.value) return -1;
 		return 1;
+	}
+	
+	public int hashCode() {
+		return value;
 	}
 }

@@ -6,16 +6,22 @@ public class BDDFactory {
 	static Node[] nodes;
 	static int nodenum;
 	
-	static Node zero;
-	static Node one;
+//	static Node zero;
+//	static Node one;
 	
-	public BDDFactory(int max) {
+//	static BDD zero;
+//	static BDD one;
+	
+	static BDDFactory factory;
+	
+	private BDDFactory(int max) {
 		maxnodenum = max;
 		nodes = new Node[maxnodenum];
 	}
 
 	public static BDDFactory init(String bddpackage, int nodenum, int cachesize) {
-		return new BDDFactory(nodenum);
+		factory = new BDDFactory(nodenum);
+		return factory;
 	}
 	
 	public BDDDomain[] extDomain(long[] sizes) {
@@ -43,10 +49,15 @@ public class BDDFactory {
 			round++;
 		}
 		
-		zero = new Node(varnum + 1);
-		one = new Node(varnum + 1);
-		nodes[0] = zero;
-		nodes[1] = one;
+//		zero = new Node(varnum + 1);
+//		one = new Node(varnum + 1);
+//		nodes[0] = zero;
+//		nodes[1] = one;
+		
+//		zero = new BDD(0);
+//		one = new BDD(1);
+		nodes[0] = new Node(varnum + 1);
+		nodes[1] = new Node(varnum + 1);
 		nodenum = 2;
 		
 		return doms;
@@ -81,12 +92,33 @@ public class BDDFactory {
 		return -1;
 	}
 	
+	public BDD ithVar(int var) {
+		return new BDD(mk(var, 0, 1));
+	}
+	
+	public BDD nithVar(int var) {
+		return new BDD(mk(var, 1, 0));
+	}
+	
 	public BDD zero() {
 		return new BDD(0);
+//		return zero;
 	}
 	
 	public BDD one() {
 		return new BDD(1);
+//		return one;
+	}
+	
+	public void printTable(BDD bdd) {
+		bdd.print();
+		System.out.println();
+		for (int i = 0; i < nodenum; i++) {
+			System.out.print(i);
+			System.out.print(" : ");
+			nodes[i].print();
+			System.out.println();
+		}
 	}
 	
 	public String toString() {
@@ -123,6 +155,14 @@ public class BDDFactory {
 		
 		Node id() {
 			return new Node(var, low, high);
+		}
+		
+		public void print() {
+			System.out.print(var);
+			System.out.print(" ");
+			System.out.print(low);
+			System.out.print(" ");
+			System.out.print(high);
 		}
 		
 		public String toString() {

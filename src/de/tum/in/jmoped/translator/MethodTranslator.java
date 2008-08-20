@@ -887,7 +887,7 @@ public class MethodTranslator implements ModuleMaker {
 		// Bypasses if the translator doesn't include the class
 		ClassTranslator coll = translator.getClassTranslator(called[0]);
 		if (coll == null) {
-			poppush(label, called[2], true, nextlabel);
+			poppush(label, called[2], true, nextlabel, called);
 			return;
 		}
 		
@@ -897,7 +897,7 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// Bypasses if translator doesn't include the method
 		if (maker == null) {
-			poppush(label, called[2], true, nextlabel);
+			poppush(label, called[2], true, nextlabel, called);
 			return;
 		}
 		
@@ -1034,12 +1034,12 @@ public class MethodTranslator implements ModuleMaker {
 		// Bypasses if the translator doesn't include the class
 		ClassTranslator coll = translator.getClassTranslator(called[0]);
 		if (coll == null) {
-			poppush(label, called[2], false, nextlabel);
+			poppush(label, called[2], false, nextlabel, called);
 			return;
 		}
 		
 		if (!invoke(translator, called, label, nextlabel, coll, coll.getId(), false))
-			poppush(label, called[2], false, nextlabel);
+			poppush(label, called[2], false, nextlabel, called);
 	}
 	
 	private void dynamic(Translator translator, String[] called, 
@@ -1056,9 +1056,10 @@ public class MethodTranslator implements ModuleMaker {
 		module.addDynamicRule(label, newd, nextlabel, fname);
 	}
 	
-	private void poppush(String label, String desc, boolean stc, String nextlabel) {
+	private void poppush(String label, String desc, boolean stc, String nextlabel, String[] called) {
 		
 		log("\tpoppush(%s, %s, %b, %s)%n", label, desc, stc, nextlabel);
+		System.err.printf("Warning: method %s not found.%n", Arrays.toString(called));
 		module.addRule(label, POPPUSH, new Poppush(
 				TranslatorUtils.countParams(desc) + ((stc) ? 0 : 1), 
 				TranslatorUtils.getReturnCategory(desc).intValue()), 
@@ -1101,7 +1102,7 @@ public class MethodTranslator implements ModuleMaker {
 		// Bypasses, if the class is ignored
 		ClassTranslator coll = translator.getClassTranslator(called[0]);
 		if (coll == null) {
-			poppush(label, called[2], false, nextlabel);
+			poppush(label, called[2], false, nextlabel, called);
 			return;
 		}
 		
@@ -1115,7 +1116,7 @@ public class MethodTranslator implements ModuleMaker {
 		HashSet<ClassTranslator> subs = new HashSet<ClassTranslator>();
 		fillSubClassesHavingMethod(subs, coll, called[1], called[2], translator);
 		if (superColl == null && subs.isEmpty()) {
-			poppush(label, called[2], false, nextlabel);
+			poppush(label, called[2], false, nextlabel, called);
 			return;
 		}
 		
@@ -1150,7 +1151,7 @@ public class MethodTranslator implements ModuleMaker {
 		
 		int id = coll.getId();
 		int size = translator.getObjectBaseId() + coll.size();
-		d.value = new New(id, size);
+		d.value = new New(id, coll.getName(), size);
 		
 		// Heap overflow
 		heapoverflow(label, NEW, d.value);
@@ -1175,12 +1176,12 @@ public class MethodTranslator implements ModuleMaker {
 				ret0);
 		
 		// <p, ret0> -> <p, nextlabel> (NEW, (id, size))
-		newd = new ExprSemiring(NEW, new New(id, size));
+		newd = new ExprSemiring(NEW, new New(id, coll.getName(), size));
 		module.addRule(ret0, newd, nextlabel);
 		
 		// <p, label> -> <p, nextlabel> (NEW, (id, size), (ONE, className))
 		newd = new ExprSemiring(NEW, 
-				new New(id, size),
+				new New(id, coll.getName(), size),
 				new Condition(Condition.ONE, className));
 		module.addRule(label, newd, nextlabel);
 	}

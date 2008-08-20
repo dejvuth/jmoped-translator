@@ -28,4 +28,13 @@ public class Long extends Number {
 	public long longValue() {
 		return value;
 	}
+	
+	public boolean equals(java.lang.Object o) {
+		if (o == null) return false;
+		return value == ((Long) o).value;
+	}
+	
+	public int hashValue() {
+		return (int) (value ^ (value >>> 32));
+	}
 }

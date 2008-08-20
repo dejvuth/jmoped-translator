@@ -729,7 +729,9 @@ public class InstructionTranslator {
 				
 				// Finds out type
 				int type = -1;
-				if (ref[2].matches("\\((I|J)\\)V"))
+				if (ref[2].equals("()V"))
+					type = Print.NOTHING;
+				else if (ref[2].matches("\\((I|J)\\)V"))
 					type = Print.INTEGER;
 				else if (ref[2].matches("\\((F|D)\\)V"))
 					type = Print.FLOAT;
@@ -795,7 +797,7 @@ public class InstructionTranslator {
 				throw new TranslatorError("Cannot handle class: %s", ce.getClass());
 			
 			String string = ((ConstantUtf8Info) cp[index]).getString();
-			return new ExprSemiring(PUSH, new Value(Category.ONE, string));
+			return new ExprSemiring(PUSH, new Value(string));
 		}
 	}
 	
