@@ -174,6 +174,31 @@ public class BDD {
 		return 0;
 	}
 	
+//	public BigInteger scanVarMax(BDDDomain dom) {
+//		int[] vars = dom.vars;
+//		int value = 0;
+//		for (int i = 0; i < vars.length; i++) {
+//			value <<= 1;
+//			value += scanVarMax(u, vars[i]);
+//		}
+//		
+//		return BigInteger.valueOf(value);
+//	}
+//	
+//	private static int scanVarMax(int u, int var) {
+//		Node thisnode = BDDFactory.nodes[u];
+//		int thisvar = thisnode.var;
+//		if (thisvar < var) {
+//			if (thisnode.high != 0) return scanVarMax(thisnode.high, var);
+//			return scanVarMax(thisnode.low, var);
+//		}
+//		if (thisvar == var) {
+//			if (thisnode.high != 0) return 1;
+//			else return 0;
+//		}
+//		return 1;
+//	}
+	
 	public BDDIterator iterator(BDDVarSet var) {
 		return new BDDIterator(this.id(), var);
 	}
