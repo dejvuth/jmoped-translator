@@ -483,7 +483,7 @@ public class Translator {
 		return set;
 	}
 	
-	public MethodArgument[] getMethodArguments(List<RawArgument> raws, List<Float> floats) {
+	public MethodArgument[] getMethodArguments(Collection<RawArgument> raws, List<Float> floats) {
 		
 		if (raws == null) return null;
 		
