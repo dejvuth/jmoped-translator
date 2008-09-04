@@ -43,7 +43,6 @@ import de.tum.in.jmoped.underbone.expr.Jump;
 import de.tum.in.jmoped.underbone.expr.Local;
 import de.tum.in.jmoped.underbone.expr.Monitorenter;
 import de.tum.in.jmoped.underbone.expr.New;
-import de.tum.in.jmoped.underbone.expr.NotifyType;
 import de.tum.in.jmoped.underbone.expr.Npe;
 import de.tum.in.jmoped.underbone.expr.Poppush;
 import de.tum.in.jmoped.underbone.expr.Return;
@@ -429,6 +428,7 @@ public class MethodTranslator implements ModuleMaker {
 				
 			case Opcodes.OPCODE_LDC:
 			case Opcodes.OPCODE_LDC_W:
+			case Opcodes.OPCODE_LDC2_W:
 				ldc(translator, d, label, nextLabel(i), ainst, cp);
 				break;
 				
