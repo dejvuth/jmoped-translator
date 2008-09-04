@@ -1,6 +1,6 @@
 package de.tum.in.jmoped.translator;
 
-import static de.tum.in.jmoped.underbone.ExprType.*;
+import static de.tum.in.jmoped.underbone.expr.ExprType.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,13 +28,14 @@ import org.gjt.jclasslib.structures.constants.ConstantClassInfo;
 
 import de.tum.in.jmoped.translator.stub.Bypasser;
 import de.tum.in.jmoped.translator.stub.StubManager;
-import de.tum.in.jmoped.underbone.ExprSemiring;
 import de.tum.in.jmoped.underbone.LabelUtils;
 import de.tum.in.jmoped.underbone.Remopla;
 import de.tum.in.jmoped.underbone.expr.Arith;
 import de.tum.in.jmoped.underbone.expr.Category;
 import de.tum.in.jmoped.underbone.expr.Comp;
 import de.tum.in.jmoped.underbone.expr.Condition;
+import de.tum.in.jmoped.underbone.expr.ExprSemiring;
+import de.tum.in.jmoped.underbone.expr.ExprType;
 import de.tum.in.jmoped.underbone.expr.Field;
 import de.tum.in.jmoped.underbone.expr.If;
 import de.tum.in.jmoped.underbone.expr.Invoke;
@@ -47,7 +48,6 @@ import de.tum.in.jmoped.underbone.expr.Npe;
 import de.tum.in.jmoped.underbone.expr.Poppush;
 import de.tum.in.jmoped.underbone.expr.Return;
 import de.tum.in.jmoped.underbone.expr.Value;
-import de.tum.in.jmoped.underbone.ExprType;
 import de.tum.in.jmoped.underbone.Module;
 import de.tum.in.wpds.Rule;
 import de.tum.in.wpds.Semiring;
@@ -219,6 +219,57 @@ public class MethodTranslator implements ModuleMaker {
 		return TranslatorUtils.formatName(name, ainstList.get(i+1).getOffset());
 	}
 	
+	public static Module makeClinit(Translator translator, String className) {
+		Module module = new Module(clinitOf(className), 0, 1, 0);
+		String label = makeClinit(translator, module);
+		module.addRule(label, new ExprSemiring(ExprType.RETURN, new Return(Return.Type.VOID)));
+		return module;
+	}
+	
+	private static String makeClinit(Translator translator, Module module) {
+		String label = TranslatorUtils.formatName(module.getName(), 0);
+		
+		/*
+		 * Sets the boolean var to true, 
+		 * if this is not the static init of the selected method.
+		 */
+		String thisName = TranslatorUtils.extractClassName(module.getName());
+		if (!translator.getInitClassName().equals(thisName)) {
+			module.ensureMaxStack(1);
+			
+			String next = getFreshReturnLabel();
+			module.addRule(label, new ExprSemiring(PUSH, new Value(Category.ONE, 1)), next);
+			label = next;
+			
+			next = getFreshReturnLabel();
+			module.addRule(label, new ExprSemiring(GLOBALSTORE, new Field(Category.ONE, thisName)), next);
+			label = next;
+		}
+		
+		// Calls the super's static initializer (if any)
+		String superName = translator.getClassTranslator(thisName).getSuperClassName();
+		log("Super name: %s%n", superName);
+		ClassTranslator superColl = translator.getClassTranslator(superName);
+		if (superColl != null //&& superColl.containsClinit() 
+				&& !translator.getInitClassName().equals(superName)) {
+			
+			// <p, name0> -> <p, clinit0 ret0> (INVOKE, 0, (global, EQ))
+			String next = getFreshReturnLabel();
+			module.addRule(label,
+					new ExprSemiring(INVOKE, new Invoke(), new Condition(Condition.ZERO, superName)), 
+					TranslatorUtils.formatName(clinitOf(superName), 0), 
+					next);
+			
+			// <p, name0> -> <p, label> (ONE, (global, NE))
+			module.addRule(label,
+					new ExprSemiring(JUMP, Jump.ONE, new Condition(Condition.ONE, superName)), 
+					next);
+			label = next;
+		}
+		
+		return label;
+	}
+	
 	/**
 	 * Makes a Remopla module from this method.
 	 */
@@ -227,45 +278,54 @@ public class MethodTranslator implements ModuleMaker {
 		log("%n*** Making: %s ***%n", name);
 		String label = TranslatorUtils.formatName(name, 0);
 		module = new Module(name, 
-				TranslatorUtils.doubleParams(isStatic(), method), 
-				TranslatorUtils.isVoid(method), 
+				TranslatorUtils.countParams(isStatic(), method),
+//				TranslatorUtils.doubleParams(isStatic(), method), 
+//				TranslatorUtils.isVoid(method), 
 				codeAttr.getMaxStack(), 
 				codeAttr.getMaxLocals());
 		
 		// If this is static initializer, 
 		if (isClinit()) {
+			label = makeClinit(translator, module);
 			
-			/*
-			 * Sets the boolean var to true, 
-			 * if this is not the static init of the selected method.
-			 */
-			String thisName = TranslatorUtils.extractClassName(name);
-			if (!translator.getInitClassName().equals(thisName)) {
-				String next = getFreshReturnLabel();
-				module.addRule(label, GLOBALPUSH, thisName, 1, next);
-				label = next;
-			}
-			
-			// Calls the super's static initializer (if any)
-			String superName = translator.getClassTranslator(thisName).getSuperClassName();
-			log("Super name: %s%n", superName);
-			ClassTranslator superColl = translator.getClassTranslator(superName);
-			if (superColl != null && superColl.containsClinit() 
-					&& !translator.getInitClassName().equals(superName)) {
-				
-				// <p, name0> -> <p, clinit0 ret0> (INVOKE, 0, (global, EQ))
-				String next = getFreshReturnLabel();
-				module.addRule(label,
-						new ExprSemiring(INVOKE, new Invoke(), new Condition(Condition.ZERO, superName)), 
-						TranslatorUtils.formatName(clinitOf(superName), 0), 
-						next);
-				
-				// <p, name0> -> <p, label> (ONE, (global, NE))
-				module.addRule(label,
-						new ExprSemiring(JUMP, Jump.ONE, new Condition(Condition.ONE, superName)), 
-						next);
-				label = next;
-			}
+//			/*
+//			 * Sets the boolean var to true, 
+//			 * if this is not the static init of the selected method.
+//			 */
+//			String thisName = TranslatorUtils.extractClassName(name);
+//			if (!translator.getInitClassName().equals(thisName)) {
+//				module.ensureMaxStack(1);
+//				
+//				String next = getFreshReturnLabel();
+////				module.addRule(label, GLOBALPUSH, thisName, 1, next);
+//				module.addRule(label, new ExprSemiring(PUSH, new Value(Category.ONE, 1)), next);
+//				label = next;
+//				
+//				next = getFreshReturnLabel();
+//				module.addRule(label, new ExprSemiring(GLOBALSTORE, new Field(Category.ONE, thisName)), next);
+//				label = next;
+//			}
+//			
+//			// Calls the super's static initializer (if any)
+//			String superName = translator.getClassTranslator(thisName).getSuperClassName();
+//			log("Super name: %s%n", superName);
+//			ClassTranslator superColl = translator.getClassTranslator(superName);
+//			if (superColl != null && superColl.containsClinit() 
+//					&& !translator.getInitClassName().equals(superName)) {
+//				
+//				// <p, name0> -> <p, clinit0 ret0> (INVOKE, 0, (global, EQ))
+//				String next = getFreshReturnLabel();
+//				module.addRule(label,
+//						new ExprSemiring(INVOKE, new Invoke(), new Condition(Condition.ZERO, superName)), 
+//						TranslatorUtils.formatName(clinitOf(superName), 0), 
+//						next);
+//				
+//				// <p, name0> -> <p, label> (ONE, (global, NE))
+//				module.addRule(label,
+//						new ExprSemiring(JUMP, Jump.ONE, new Condition(Condition.ONE, superName)), 
+//						next);
+//				label = next;
+//			}
 		}
 		
 		CPInfo[] cp = method.getClassFile().getConstantPool();
@@ -412,7 +472,6 @@ public class MethodTranslator implements ModuleMaker {
 			
 			case Opcodes.OPCODE_RETURN:
 			case Opcodes.OPCODE_ARETURN:
-//			case Opcodes.OPCODE_ATHROW:
 			case Opcodes.OPCODE_DRETURN:
 			case Opcodes.OPCODE_FRETURN:
 			case Opcodes.OPCODE_IRETURN:
@@ -656,9 +715,9 @@ public class MethodTranslator implements ModuleMaker {
 		 *  (2) the field (or the method to be called) 
 		 *  	does not belong to the starting class (because
 		 *  	it's already included), and
-		 *  (3) the initializer is not this method.
+		 *  (3) this method is not the initializer.
 		 */
-		boolean cond1 = ct.containsClinit();
+		boolean cond1 = true; //ct.containsClinit();
 		boolean cond2 = !translator.getInitClassName().equals(ct.getName());
 		boolean cond3 = !isClinitOf(ct.getName());
 		log("\tcond1: %b, cond2: %b, cond3: %b%n", cond1, cond2, cond3);
@@ -875,12 +934,6 @@ public class MethodTranslator implements ModuleMaker {
 			return;
 		}
 		
-//		// Bypasses the class de/tum/in/jmoped/translator/stub/Stub
-//		if (called[0].equals("Stub")) {
-//			invokestaticStub(translator, called, label, nextlabel);
-//			return;
-//		}
-		
 		if (Bypasser.bypass(module, translator, called, label, nextlabel))
 			return;
 		
@@ -891,7 +944,17 @@ public class MethodTranslator implements ModuleMaker {
 			return;
 		}
 		
+		// Finds the method in supers
 		String fname = TranslatorUtils.formatName(coll.getName(), called[1], called[2]);
+		if (!coll.contains(fname)) {
+			coll = findSuperClassHavingMethod(coll, called[1], called[2], translator);
+		}
+		if (coll == null) {
+			poppush(label, called[2], true, nextlabel, called);
+			return;
+		}
+		
+		fname = TranslatorUtils.formatName(coll.getName(), called[1], called[2]);
 		Translator.log("\tformatted name: %s%n", fname);
 		ModuleMaker maker = coll.getModuleMaker(fname);
 		

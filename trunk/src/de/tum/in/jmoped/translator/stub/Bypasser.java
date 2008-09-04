@@ -1,12 +1,13 @@
 package de.tum.in.jmoped.translator.stub;
 
-import static de.tum.in.jmoped.underbone.ExprType.ARITH;
-import static de.tum.in.jmoped.underbone.ExprType.HEAPLOAD;
-import static de.tum.in.jmoped.underbone.ExprType.JUMP;
-import static de.tum.in.jmoped.underbone.ExprType.NOTIFY;
-import static de.tum.in.jmoped.underbone.ExprType.POPPUSH;
-import static de.tum.in.jmoped.underbone.ExprType.WAITINVOKE;
-import static de.tum.in.jmoped.underbone.ExprType.WAITRETURN;
+import static de.tum.in.jmoped.underbone.expr.ExprType.ARITH;
+import static de.tum.in.jmoped.underbone.expr.ExprType.FIELDLOAD;
+import static de.tum.in.jmoped.underbone.expr.ExprType.GETRETURN;
+import static de.tum.in.jmoped.underbone.expr.ExprType.JUMP;
+import static de.tum.in.jmoped.underbone.expr.ExprType.NOTIFY;
+import static de.tum.in.jmoped.underbone.expr.ExprType.POPPUSH;
+import static de.tum.in.jmoped.underbone.expr.ExprType.WAITINVOKE;
+import static de.tum.in.jmoped.underbone.expr.ExprType.WAITRETURN;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -20,12 +21,11 @@ import de.tum.in.jmoped.translator.MethodTranslator;
 import de.tum.in.jmoped.translator.Translator;
 import de.tum.in.jmoped.translator.TranslatorError;
 import de.tum.in.jmoped.translator.TranslatorUtils;
-import de.tum.in.jmoped.underbone.ExprSemiring;
-import de.tum.in.jmoped.underbone.ExprType;
 import de.tum.in.jmoped.underbone.Module;
 import de.tum.in.jmoped.underbone.expr.Arith;
 import de.tum.in.jmoped.underbone.expr.Category;
-import de.tum.in.jmoped.underbone.expr.Condition;
+import de.tum.in.jmoped.underbone.expr.ExprSemiring;
+import de.tum.in.jmoped.underbone.expr.ExprType;
 import de.tum.in.jmoped.underbone.expr.Field;
 import de.tum.in.jmoped.underbone.expr.If;
 import de.tum.in.jmoped.underbone.expr.Invoke;
@@ -54,7 +54,16 @@ public class Bypasser {
 	static {
 		m.put("Stub", new HashSet<String>(1));
 		
-		HashSet<String> set = new HashSet<String>(4, 0.95f);
+		HashSet<String> set = new HashSet<String>(3);
+		set.add(TranslatorUtils.formatName(
+				"de/tum/in/jmoped/underbone/DomainManager", "ithVar", 
+				"(Lnet/sf/javabdd/BDDDomain;J)Lnet/sf/javabdd/BDD;"));
+		set.add(TranslatorUtils.formatName(
+				"de/tum/in/jmoped/underbone/DomainManager", "scanVar", 
+				"(Lnet/sf/javabdd/BDD;Lnet/sf/javabdd/BDDDomain;)J"));
+		m.put("de/tum/in/jmoped/underbone/DomainManager", set);
+		
+		set = new HashSet<String>(4, 0.95f);
 		set.add(TranslatorUtils.formatName("java/lang/Class", "getEnumConstants", "()[Ljava/lang/Object;"));
 		set.add(TranslatorUtils.formatName("java/lang/Class", "getName", "()Ljava/lang/String;"));
 		set.add(TranslatorUtils.formatName("java/lang/Class", "getSuperclass", "()Ljava/lang/Class;"));
@@ -111,6 +120,8 @@ public class Bypasser {
 		log("\tbypassing: %s%n", Arrays.toString(called));
 		if (called[0].equals("Stub")) {
 			bypassStub(module, translator, called, label, nextlabel);
+		} else if (called[0].equals("de/tum/in/jmoped/underbone/DomainManager")) {
+			bypassDomainManager(module, translator, called, label, nextlabel);
 		} else if (called[0].equals("java/lang/Class")) {
 			bypassClass(module, translator, called, label, nextlabel);
 		} else if (called[0].equals("java/lang/Float")) {
@@ -136,6 +147,39 @@ public class Bypasser {
 		}
 		
 		error(called);
+	}
+	
+	private static void bypassDomainManager(Module module,
+			Translator translator, String[] called,
+			String label, String nextlabel) {
+		if (called[1].equals("ithVar")) {
+			String label1 = MethodTranslator.getFreshReturnLabel();
+			module.addRule(label, 
+					new ExprSemiring(ExprType.INVOKE, new Invoke(false, 3)), 
+					TranslatorUtils.formatName("net/sf/javabdd/BDDDomain", 
+							"ithVar", "(J)Lnet/sf/javabdd/BDD;", 0), 
+							label1);
+			
+			String label2 = MethodTranslator.getFreshReturnLabel();
+			module.addRule(label1, 
+					new ExprSemiring(ExprType.POPPUSH, new Poppush(1, 0)),
+					label2);
+			module.addRule(label2, GETRETURN, Category.ONE, nextlabel);
+			return;
+		}
+		
+		if (called[1].equals("scanVar")) {
+			String label1 = MethodTranslator.getFreshReturnLabel();
+			module.addRule(label, 
+					new ExprSemiring(ExprType.INVOKE, new Invoke(false, 2)), 
+					TranslatorUtils.formatName("net/sf/javabdd/BDD", 
+							"scanVar", 
+							"(Lnet/sf/javabdd/BDDDomain;)J",
+							0), 
+							label1);
+			module.addRule(label1, GETRETURN, Category.TWO, nextlabel);
+			return;
+		}
 	}
 	
 	private static void bypassClass(Module module,
@@ -250,7 +294,7 @@ public class Bypasser {
 			Translator translator, String[] called,
 			String label, String nextlabel) {
 		if (called[1].equals("getClass")) {
-			module.addRule(label, new ExprSemiring(HEAPLOAD), nextlabel);
+			module.addRule(label, new ExprSemiring(FIELDLOAD, new Field(Category.ONE, 0)), nextlabel);
 			return;
 		}
 		

@@ -196,6 +196,16 @@ public class ClassTranslator {
 		return modules.containsKey(formattedName);
 	}
 	
+	/**
+	 * Returns <code>true</code> if the method specified by 
+	 * <code>className</code>, <code>methodName</code>, and
+	 * <code>methodDesc</code> is included.
+	 * 
+	 * @param className the class name.
+	 * @param methodName the method name.
+	 * @param methodDesc the method descriptor.
+	 * @return <code>true</code> if the method is included.
+	 */
 	public boolean contains(String className, String methodName, String methodDesc) {
 		return contains(TranslatorUtils.formatName(className, methodName, methodDesc));
 	}
@@ -206,18 +216,8 @@ public class ClassTranslator {
 	 * @return <code>true</code> if the collection contains a static initializer.
 	 */
 	public boolean containsClinit() {
-		return contains(TranslatorUtils.formatName(getName(), "<clinit>", "()V"));
+		return contains(getName(), "<clinit>", "()V");
 	}
-	
-//	/**
-//	 * Returns the map of instance fields of this collection.
-//	 * 
-//	 * @return the map of instance field translators.
-//	 * @see #staticFields.
-//	 */
-//	HashMap<String, FieldTranslator> getInstanceFieldMap() {
-//		return instanceFields;
-//	}
 	
 	/**
 	 * Returns the set of static fields of this collection.

@@ -34,8 +34,6 @@ import de.tum.in.jmoped.underbone.Remopla;
 import de.tum.in.jmoped.underbone.Variable;
 import de.tum.in.wpds.Utils;
 
-import static de.tum.in.jmoped.underbone.VariableType.*;
-
 /**
  * A Java-bytecode-to-Remopla translator.
  * 
@@ -221,15 +219,15 @@ public class Translator {
 		
 		// Global vars
 		ArrayList<Variable> gv = new ArrayList<Variable>();
-		gv.add(new Variable(INT, Remopla.e, bits));
+		gv.add(new Variable(Variable.INT, Remopla.e, bits));
 		for (ClassTranslator coll : included.values()) {
 			
 			/*
 			 *  A boolean variable for each class, except the starting class,
-			 *  that has static initializer.
+			 *  to control its static initializer.
 			 */
-			if (coll.containsClinit() && coll.getId() != 0) {
-				gv.add(new Variable(BOOLEAN, coll.getName(), 0, true));
+			if (/*coll.containsClinit() &&*/ coll.getId() != 0) {
+				gv.add(new Variable(Variable.BOOLEAN, coll.getName(), 0, true));
 			}
 			
 			// Static field
@@ -240,9 +238,9 @@ public class Translator {
 				
 				Variable var;
 				if (field.isAssertionsDisabledField())
-					var = new Variable(BOOLEAN, field.getName());
+					var = new Variable(Variable.BOOLEAN, field.getName());
 				else
-					var = new Variable(INT, field.getName(), bits);
+					var = new Variable(Variable.INT, field.getName(), bits);
 				var.setShared(true);
 				gv.add(var);
 			}
@@ -252,9 +250,9 @@ public class Translator {
 		// Adds aux variables in case of multithreading
 		if (multithreading()) {
 			for (int i = 1; i <= tbound; i++) {
-				gv.add(new Variable(INT, LabelUtils.formatSave(i), bits, true));
-				gv.add(new Variable(BOOLEAN, LabelUtils.formatWaitFlag(i), 0, true));
-				gv.add(new Variable(INT, LabelUtils.formatWaitFor(i), 0, true));
+				gv.add(new Variable(Variable.INT, LabelUtils.formatSave(i), bits, true));
+				gv.add(new Variable(Variable.BOOLEAN, LabelUtils.formatWaitFlag(i), 0, true));
+				gv.add(new Variable(Variable.INT, LabelUtils.formatWaitFor(i), 0, true));
 			}
 		}
 		
@@ -264,6 +262,11 @@ public class Translator {
 		for (ClassTranslator coll : included.values()) {
 			for (ModuleMaker module : coll.getModuleMakers()) {
 				modules.add(module.make(this));
+			}
+			
+			// Manually creates a static initializer if not exist
+			if (!coll.containsClinit()) {
+				modules.add(MethodTranslator.makeClinit(this, coll.getName()));
 			}
 		}
 		

@@ -15,13 +15,13 @@ import org.gjt.jclasslib.structures.constants.ConstantLongInfo;
 import org.gjt.jclasslib.structures.constants.ConstantStringInfo;
 import org.gjt.jclasslib.structures.constants.ConstantUtf8Info;
 
-import de.tum.in.jmoped.underbone.ExprSemiring;
-import de.tum.in.jmoped.underbone.ExprType;
 import de.tum.in.jmoped.underbone.expr.Arith;
 import de.tum.in.jmoped.underbone.expr.Category;
 import de.tum.in.jmoped.underbone.expr.Comp;
 import de.tum.in.jmoped.underbone.expr.Condition;
 import de.tum.in.jmoped.underbone.expr.Dup;
+import de.tum.in.jmoped.underbone.expr.ExprSemiring;
+import de.tum.in.jmoped.underbone.expr.ExprType;
 import de.tum.in.jmoped.underbone.expr.If;
 import de.tum.in.jmoped.underbone.expr.Inc;
 import de.tum.in.jmoped.underbone.expr.Jump;
@@ -34,7 +34,7 @@ import de.tum.in.jmoped.underbone.expr.Return;
 import de.tum.in.jmoped.underbone.expr.Unaryop;
 import de.tum.in.jmoped.underbone.expr.Value;
 
-import static de.tum.in.jmoped.underbone.ExprType.*;
+import static de.tum.in.jmoped.underbone.expr.ExprType.*;
 
 /**
  * A helper class that translates bytecode instructions to Remopla expressions.
@@ -731,10 +731,14 @@ public class InstructionTranslator {
 				int type = -1;
 				if (ref[2].equals("()V"))
 					type = Print.NOTHING;
-				else if (ref[2].matches("\\((I|J)\\)V"))
+				else if (ref[2].matches("(I)V"))
 					type = Print.INTEGER;
-				else if (ref[2].matches("\\((F|D)\\)V"))
+				else if (ref[2].matches("(J)V"))
+					type = Print.LONG;
+				else if (ref[2].matches("(F)V"))
 					type = Print.FLOAT;
+				else if (ref[2].matches("(D)V"))
+					type = Print.DOUBLE;
 				else if (ref[2].equals("(C)V"))
 					type = Print.CHARACTER;
 				else if (ref[2].equals("(Ljava/lang/String;)V"))
