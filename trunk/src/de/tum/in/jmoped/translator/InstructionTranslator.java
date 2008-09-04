@@ -7,7 +7,6 @@ import org.gjt.jclasslib.bytecode.IncrementInstruction;
 import org.gjt.jclasslib.bytecode.MultianewarrayInstruction;
 import org.gjt.jclasslib.bytecode.Opcodes;
 import org.gjt.jclasslib.structures.CPInfo;
-import org.gjt.jclasslib.structures.constants.ConstantClassInfo;
 import org.gjt.jclasslib.structures.constants.ConstantDoubleInfo;
 import org.gjt.jclasslib.structures.constants.ConstantFloatInfo;
 import org.gjt.jclasslib.structures.constants.ConstantIntegerInfo;
