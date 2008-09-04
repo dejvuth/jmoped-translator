@@ -513,6 +513,16 @@ public class TranslatorUtils {
 		return count;
 	}
 	
+	public static int countParams(boolean stc, MethodInfo method) {
+		try {
+			int count = countParams(method.getDescriptor());
+			if (!stc) count++;
+			return count;
+		} catch (InvalidByteCodeException e) {
+			throw new TranslatorError("Error while reading a method");
+		}
+	}
+	
 	/**
 	 * Returns the array of parameter types as specified by the
 	 * <code>descriptor</code>. 

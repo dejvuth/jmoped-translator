@@ -141,15 +141,15 @@ public class BDD {
 		return restrictWith(node.low, j, b);
 	}
 	
-	public BigInteger scanVar(BDDDomain dom) {
+	public long scanVar(BDDDomain dom) {
 		int[] vars = dom.vars;
-		int value = 0;
+		long value = 0;
 		for (int i = 0; i < vars.length; i++) {
 			value <<= 1;
 			value += scanVar(u, vars[i]);
 		}
 		
-		return BigInteger.valueOf(value);
+		return value;
 	}
 	
 	/**

@@ -17,6 +17,8 @@ import de.tum.in.jmoped.underbone.expr.Arith;
 import de.tum.in.jmoped.underbone.expr.Category;
 import de.tum.in.jmoped.underbone.expr.Comp;
 import de.tum.in.jmoped.underbone.expr.Dup;
+import de.tum.in.jmoped.underbone.expr.ExprSemiring;
+import de.tum.in.jmoped.underbone.expr.ExprType;
 import de.tum.in.jmoped.underbone.expr.If;
 import de.tum.in.jmoped.underbone.expr.Inc;
 import de.tum.in.jmoped.underbone.expr.Invoke;
@@ -25,12 +27,10 @@ import de.tum.in.jmoped.underbone.expr.Local;
 import de.tum.in.jmoped.underbone.expr.New;
 import de.tum.in.jmoped.underbone.expr.Newarray;
 import de.tum.in.jmoped.underbone.expr.Value;
-import de.tum.in.jmoped.underbone.ExprSemiring;
-import de.tum.in.jmoped.underbone.ExprType;
 import de.tum.in.jmoped.underbone.LabelUtils;
 import de.tum.in.jmoped.underbone.Module;
 
-import static de.tum.in.jmoped.underbone.ExprType.*;
+import static de.tum.in.jmoped.underbone.expr.ExprType.*;
 
 /**
  * The <code>MethodWrapper</code> wraps the initial method by creating
@@ -165,7 +165,10 @@ public class MethodWrapper {
 			sizes.add(defaultsize);
 			
 			// Array length
-			sizes.add(new Long(2*(length + 1))); // + 1 because size tells no. of possibilities
+//			sizes.add(new Long(2*(length + 1))); // + 1 because size tells no. of possibilities
+//			System.out.printf("length + 1: %d, bits: %d%n", 
+//					length + 1, 1 << (int) Math.ceil(Math.log10(length + 1)/Math.log10(2)));
+			sizes.add(new Long(1 << (int) Math.ceil(Math.log10(2*(length + 1))/Math.log10(2))));
 			
 			// Owner & counter
 			if (translator.multithreading() && translator.lazy()) {
@@ -176,7 +179,8 @@ public class MethodWrapper {
 			// Array elements
 			range = aranges.get(i);
 			checkRange(range, bits);
-			long size = (range == null) ? defaultsize : range.size();
+//			long size = (range == null) ? defaultsize : range.size();
+			long size = (range == null) ? defaultsize : 1 << (int) Math.ceil(Math.log10(range.size())/Math.log10(2));
 			for (int j = 0; j < length; j++)
 				sizes.add(size);
 				
@@ -317,7 +321,7 @@ public class MethodWrapper {
 		ArrayList<Integer> maxs = new ArrayList<Integer>();
 		ExprSemiring d;
 		
-		Module init = new Module(name, new boolean[0], true, paramTypes.size(), 1);
+		Module init = new Module(name, 0, paramTypes.size(), 1);
 		
 		// TODO Calls static initializers of parameters?
 		
