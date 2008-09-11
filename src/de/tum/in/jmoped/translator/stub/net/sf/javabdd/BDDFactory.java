@@ -6,17 +6,14 @@ public class BDDFactory {
 	static Node[] nodes;
 	static int nodenum;
 	
-//	static Node zero;
-//	static Node one;
-	
-//	static BDD zero;
-//	static BDD one;
+	static int[] H;
 	
 	static BDDFactory factory;
 	
 	private BDDFactory(int max) {
 		maxnodenum = max;
-		nodes = new Node[maxnodenum];
+		nodes = new Node[max];
+		H = new int[max];
 	}
 
 	public static BDDFactory init(String bddpackage, int nodenum, int cachesize) {
@@ -28,7 +25,7 @@ public class BDDFactory {
 		// Construct BDD domains
 		BDDDomain[] doms = new BDDDomain[sizes.length];
 		for (int i = 0; i < sizes.length; i++) {
-			doms[i] = new BDDDomain(sizes[i]);
+			doms[i] = new BDDDomain(i, sizes[i]);
 		}
 		
 		// Counts the number of variables
@@ -49,13 +46,6 @@ public class BDDFactory {
 			round++;
 		}
 		
-//		zero = new Node(varnum + 1);
-//		one = new Node(varnum + 1);
-//		nodes[0] = zero;
-//		nodes[1] = one;
-		
-//		zero = new BDD(0);
-//		one = new BDD(1);
 		nodes[0] = new Node(varnum + 1);
 		nodes[1] = new Node(varnum + 1);
 		nodenum = 2;
@@ -78,18 +68,47 @@ public class BDDFactory {
 		if (u != -1) return u;
 		
 		assert(nodenum < maxnodenum);
-		u = nodenum++;
+		u = nodenum;
+		nodenum++;
+		
 		nodes[u] = new Node(i, l, h);
+		int hash = hash(i, l, h);
+		while (H[hash] != 0)
+			hash = (hash + 1) % maxnodenum;
+		H[hash] = u;
 		return u;
 	}
 	
 	private static int lookup(int i, int l, int h) {
-		for (int index = 0; index < nodenum; index++) {
-			Node node = nodes[index];
-			if (node.equals(i, l, h))
-				return index;
+//		System.out.printf("lookup: %d %d %d%n", i, l, h);
+		int hash = hash(i, l, h);
+		int u = H[hash];
+		if (u == 0)
+			return -1;
+		
+		while (u != 0 && !nodes[u].equals(i, l, h)) {
+			hash = (hash + 1) % maxnodenum;
+			u = H[hash];
 		}
-		return -1;
+		
+		if (u == 0)
+			return -1;
+		return u;
+		
+//		for (int index = nodenum - 1; index >= 2; index--) {
+//			Node node = nodes[index];
+//			if (node.equals(i, l, h))
+//				return index;
+//		}
+//		return -1;
+	}
+	
+	private static int hash(int i, int v0, int v1) {
+		return (pair(i, pair(v0, v1)) % 251) % maxnodenum;
+	}
+	
+	private static int pair(int i, int j) {
+		return ((i + j) * (i + j + 1))/2 + i;
 	}
 	
 	public BDD ithVar(int var) {
@@ -108,6 +127,24 @@ public class BDDFactory {
 	public BDD one() {
 		return new BDD(1);
 //		return one;
+	}
+	
+	public BDDPairing makePair() {
+		return new BDDPairing();
+	}
+	
+	public BDDPairing makePair(BDDDomain dom1, BDDDomain dom2) {
+		BDDPairing pairing = new BDDPairing();
+		pairing.set(dom1, dom2);
+		return pairing;
+	}
+	
+	public BDDVarSet makeSet(BDDDomain[] doms) {
+		int u = BDDDomain.set(doms[0]);
+		for (int i = 1; i < doms.length; i++) {
+			u = BDDVarSet.unionWith(u, BDDDomain.set(doms[i]));
+		}
+		return new BDDVarSet(u);
 	}
 	
 	public void printTable(BDD bdd) {

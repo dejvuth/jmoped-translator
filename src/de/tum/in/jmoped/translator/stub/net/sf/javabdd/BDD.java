@@ -1,6 +1,5 @@
 package de.tum.in.jmoped.translator.stub.net.sf.javabdd;
 
-import de.tum.in.jmoped.translator.stub.java.math.BigInteger;
 import de.tum.in.jmoped.translator.stub.net.sf.javabdd.BDDFactory.Node;
 
 public class BDD {
@@ -65,6 +64,14 @@ public class BDD {
 		return this;
 	}
 	
+	public BDD replaceWith(BDDPairing pairing) {
+		u = applyWith(AND, u, pairing.u);
+//		System.out.println("After and");
+//		System.out.println(BDD.toString(u));
+		u = exist(u, pairing.vs);
+		return this;
+	}
+	
 	private static int not(int index) {
 		if (index == 0) return 1;
 		if (index == 1) return 0;
@@ -86,20 +93,42 @@ public class BDD {
 		return new BDD(not(u));
 	}
 	
-	public BDD exist(BDDVarSet varset) {
-		BDD bdd = this.id();
+	private static int exist(int bdd, int u) {
 		Node[] nodes = BDDFactory.nodes;
 		
 		// Traverses down through high branch until node one is met
-		int current = varset.u;
+		int current = u;
 		while (current != 1) {
 			int var = nodes[current].var;
-			BDD x = bdd.restrict(var, false);
-			x.orWith(bdd.restrict(var, true));
+			int x = restrictWith(bdd, var, false);
+			x = applyWith(OR, x, restrictWith(bdd, var, true));
 			bdd = x;
 			current = BDDVarSet.next(current);
+//			
+//			BDD x = bdd.restrict(var, false);
+//			x.orWith(bdd.restrict(var, true));
+//			bdd = x;
+//			current = BDDVarSet.next(current);
 		}
 		return bdd;
+	}
+	
+	public BDD exist(BDDVarSet varset) {
+		return new BDD(exist(this.u, varset.u));
+		
+//		BDD bdd = this.id();
+//		Node[] nodes = BDDFactory.nodes;
+//		
+//		// Traverses down through high branch until node one is met
+//		int current = varset.u;
+//		while (current != 1) {
+//			int var = nodes[current].var;
+//			BDD x = bdd.restrict(var, false);
+//			x.orWith(bdd.restrict(var, true));
+//			bdd = x;
+//			current = BDDVarSet.next(current);
+//		}
+//		return bdd;
 	}
 	
 	public BDDFactory getFactory() {
@@ -132,7 +161,7 @@ public class BDD {
 		return this;
 	}
 	
-	private int restrictWith(int u, int j, boolean b) {
+	private static int restrictWith(int u, int j, boolean b) {
 		Node node = BDDFactory.nodes[u];
 		int var = node.var;
 		if (var > j) return u;
@@ -200,49 +229,39 @@ public class BDD {
 //	}
 	
 	public BDDIterator iterator(BDDVarSet var) {
-		return new BDDIterator(this.id(), var);
+		return new BDDIterator(this, var);
 	}
 	
 	public static class BDDIterator {
-		BDD bdd;
+		int u;
 		BDDVarSet varset;
 		
 		BDDIterator(BDD bdd, BDDVarSet varset) {
-			this.bdd = bdd;
+			this.u = bdd.u;
 			this.varset = varset;
 		}
 		
 		public boolean hasNext() {
-			return !bdd.isZero();
+			return u != 0;
 		}
 		
 		public BDD nextBDD() {
-			BDDFactory factory = BDDFactory.factory;
 			Node[] nodes = BDDFactory.nodes;
 			
 			// Traverses down through high branch until node one is met
-//			BDD a = factory.one();
 			int a = 1;
 			int current = varset.u;
 			while (current != 1) {
 				int var = nodes[current].var;
-				int s = scanVar(bdd.u, var);
-//				System.out.printf("var:%d s:%d%n", var, s);
+				int s = scanVar(u, var);
 				if (s == 0)
-//					a.andWith(factory.nithVar(var));
 					a = applyWith(AND, a, BDDFactory.mk(var, 1, 0));
 				else
-//					a.andWith(factory.ithVar(var));
 					a = applyWith(AND, a, BDDFactory.mk(var, 0, 1));
-//				System.out.println(a);
 				current = BDDVarSet.next(current);
 			}
 			
-//			System.out.println(a);
-//			BDD nota = a.not();
-//			BDD nota = not(a);
-//			bdd.andWith(nota);
-			bdd.u = applyWith(AND, bdd.u, not(a));
+			u = applyWith(AND, u, not(a));
 			return new BDD(a);
 		}
 	}
@@ -251,10 +270,18 @@ public class BDD {
 		System.out.print(u);
 	}
 	
-	public String toString() {
+	static String toString(int u) {
 		StringBuilder out = new StringBuilder();
 		out.append(String.format("%d%n", u));
 		out.append(BDDFactory.toString(BDDFactory.nodes, BDDFactory.nodenum));
 		return out.toString();
+	}
+	
+	public String toString() {
+		return toString(u);
+//		StringBuilder out = new StringBuilder();
+//		out.append(String.format("%d%n", u));
+//		out.append(BDDFactory.toString(BDDFactory.nodes, BDDFactory.nodenum));
+//		return out.toString();
 	}
 }

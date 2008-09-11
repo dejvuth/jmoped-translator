@@ -15,7 +15,7 @@ public class BDDTest {
 		BDDIterator itr = init.iterator(doms[1].set());
 		while (itr.hasNext()) {
 			BDD bdd = itr.nextBDD();
-			System.out.println(bdd.scanVar(doms[1]).intValue());
+			System.out.println(bdd.scanVar(doms[1]));
 		}
 		System.out.printf("factory.getNodeNum():%d%n", factory.getNodeNum());
 		
@@ -23,7 +23,7 @@ public class BDDTest {
 		itr = init.iterator(doms[2].set());
 		while (itr.hasNext()) {
 			BDD bdd = itr.nextBDD();
-			System.out.println(bdd.scanVar(doms[2]).intValue());
+			System.out.println(bdd.scanVar(doms[2]));
 		}
 		System.out.printf("factory.getNodeNum():%d%n", factory.getNodeNum());
 	}
