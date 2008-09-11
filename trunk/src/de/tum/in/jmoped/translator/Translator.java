@@ -415,6 +415,7 @@ public class Translator {
 		HashSet<String> subs = new HashSet<String>();
 		subs.add(name);
 		fillSubInterfaces(subs);
+		log("Subinterfaces of %s: %s%n", name, subs);
 		
 		// Searches in every included class
 		for (ClassTranslator coll : included.values()) {
@@ -434,6 +435,7 @@ public class Translator {
 			}
 		}
 		
+		log("Implementors of %s: %s%n", name, classes);
 		return classes;
 	}
 	
@@ -624,6 +626,10 @@ public class Translator {
 		log(1, msg, args);
 	}
 	
+	static boolean debug() {
+		return verbosity >= 2;
+	}
+	
 	private static void log(int threshold, String msg, Object... args) {
 		if (verbosity >= threshold)
 			logger.fine(String.format(msg, args));
@@ -716,7 +722,8 @@ public class Translator {
 		for (int i = 0; i < methods.length; i++) {
 			
 			// Includes all classes in parameters
-			log("\tmethod: %s%s%n", methods[i].getName(), methods[i].getDescriptor());
+			log("\tmethod: %s.%s%s%n", collection.getName(), 
+					methods[i].getName(), methods[i].getDescriptor());
 			List<String> params = LabelUtils.getParamTypes(methods[i].getDescriptor());
 			for (String param : params) {
 				if (param.startsWith("[")) {
@@ -731,7 +738,7 @@ public class Translator {
 			
 			// Finds code attribute
 			CodeAttribute code = (CodeAttribute) methods[i].findAttribute(CodeAttribute.class);
-			if (code == null) return;
+			if (code == null) continue;
 			
 			// Creates new module maker
 			ModuleMaker module = new MethodTranslator(methods[i]);
@@ -903,24 +910,27 @@ public class Translator {
 	}
 	
 	private void logIncluded() {
+		if (!debug()) return;
 		
-		log("#included: %s%n", included.size());
-		log("included:  %s%n", included);
-		log("%n*** Collections ***%n");
-		for (ClassTranslator coll : included.values()) {
-			log("collection %d: %s, super: %s, subs: %s%n", coll.getId(), 
-					coll.getName(), coll.getSuperClassName(), coll.getSubClasses());
-			for (Map.Entry<String, FieldTranslator> entry : coll.staticFields.entrySet()) {
-				log("\tstatic field: %s (%s)%n", entry.getKey(), entry.getValue());
-			}
-			for (Map.Entry<String, FieldTranslator> entry : coll.instanceFields.entrySet()) {
-				log("\tfield: %s (%s)%n", entry.getKey(), entry.getValue());
-			}
-			for (ModuleMaker module : coll.getModuleMakers())
-				if (module != null)
-					log("\tmodule: %s%n", module.getName());
-		}
-		log("*******************%n%n");
+		log("%s", toString());
+		
+//		log("#included: %s%n", included.size());
+//		log("included:  %s%n", included);
+//		log("%n*** Collections ***%n");
+//		for (ClassTranslator coll : included.values()) {
+//			log("collection %d: %s, super: %s, subs: %s%n", coll.getId(), 
+//					coll.getName(), coll.getSuperClassName(), coll.getSubClasses());
+//			for (Map.Entry<String, FieldTranslator> entry : coll.staticFields.entrySet()) {
+//				log("\tstatic field: %s (%s)%n", entry.getKey(), entry.getValue());
+//			}
+//			for (Map.Entry<String, FieldTranslator> entry : coll.instanceFields.entrySet()) {
+//				log("\tfield: %s (%s)%n", entry.getKey(), entry.getValue());
+//			}
+//			for (ModuleMaker module : coll.getModuleMakers())
+//				if (module != null)
+//					log("\tmodule: %s%n", module.getName());
+//		}
+//		log("*******************%n%n");
 	}
 	
 	/**
@@ -935,8 +945,10 @@ public class Translator {
 		s.append(String.format("included:  %s%n", included));
 		s.append(String.format("%n*** Collections ***%n"));
 		for (ClassTranslator coll : included.values()) {
-			s.append(String.format("collection %d: %s, super: %s, subs: %s%n", coll.getId(), 
-					coll.getName(), coll.getSuperClassName(), coll.getSubClasses()));
+			s.append(String.format("collection %d: %s, super: %s, subs: %s, interfaces: %s%n", 
+					coll.getId(), coll.getName(), 
+					coll.getSuperClassName(), coll.getSubClasses(),
+					Arrays.toString(coll.getInterfaces())));
 			for (Map.Entry<String, FieldTranslator> entry : coll.staticFields.entrySet()) {
 				s.append(String.format("\tstatic field: %s (%s)%n", entry.getKey(), entry.getValue()));
 			}

@@ -9,10 +9,14 @@ public class BDDVarSet {
 	public BDDVarSet(int u) {
 		this.u = u;
 	}
+	
+	static int unionWith(int thisu, int thatu) {
+		return BDD.applyWith(BDD.AND, thisu, thatu);
+	}
 
 	public BDDVarSet unionWith(BDDVarSet that) {
-		
-		u = BDD.applyWith(BDD.AND, u, that.u);
+		u = unionWith(u, that.u);
+//		u = BDD.applyWith(BDD.AND, u, that.u);
 		return this;
 		
 //		Node node = lastNode();

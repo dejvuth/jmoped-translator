@@ -120,13 +120,13 @@ public class InstructionTranslator {
 			return checkcast(translator, cp, ainst);
 			
 		case Opcodes.OPCODE_D2F:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.D2F));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.D2F));
 			
 		case Opcodes.OPCODE_D2I:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.D2I));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.D2I));
 			
 		case Opcodes.OPCODE_D2L:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.D2L));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.D2L));
 			
 		case Opcodes.OPCODE_DADD:
 			return new ExprSemiring(ARITH, new Arith(Arith.FADD, Category.TWO));
@@ -167,7 +167,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, new Arith(Arith.FMUL, Category.TWO));
 			
 		case Opcodes.OPCODE_DNEG:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.DNEG));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.DNEG));
 			
 		case Opcodes.OPCODE_DREM:
 			return new ExprSemiring(ARITH, new Arith(Arith.FREM, Category.TWO));
@@ -209,13 +209,13 @@ public class InstructionTranslator {
 			return new ExprSemiring(DUP, Dup.DUP_X2);
 			
 		case Opcodes.OPCODE_F2D:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.F2D));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.F2D));
 			
 		case Opcodes.OPCODE_F2I:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.F2I));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.F2I));
 			
 		case Opcodes.OPCODE_F2L:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.F2L));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.F2L));
 			
 		case Opcodes.OPCODE_FADD:
 			return new ExprSemiring(ARITH, new Arith(Arith.FADD, Category.ONE));
@@ -257,7 +257,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, new Arith(Arith.FMUL, Category.ONE));
 			
 		case Opcodes.OPCODE_FNEG:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.FNEG));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.FNEG));
 			
 		case Opcodes.OPCODE_FREM:
 			return new ExprSemiring(ARITH, new Arith(Arith.FREM, Category.ONE));
@@ -296,13 +296,13 @@ public class InstructionTranslator {
 			return new ExprSemiring(JUMP, Jump.ONE);
 			
 		case Opcodes.OPCODE_I2D:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2D));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.I2D));
 			
 		case Opcodes.OPCODE_I2F:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2F));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.I2F));
 			
 		case Opcodes.OPCODE_I2L:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.I2L));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.I2L));
 			
 		case Opcodes.OPCODE_I2S:
 			return new ExprSemiring(JUMP, Jump.ONE);
@@ -400,7 +400,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, new Arith(Arith.MUL, Category.ONE));
 			
 		case Opcodes.OPCODE_INEG:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.INEG));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.INEG));
 			
 		case Opcodes.OPCODE_INSTANCEOF:
 			return instanceofInst(translator, cp, ainst);
@@ -458,13 +458,13 @@ public class InstructionTranslator {
 			return new ExprSemiring(PUSH, Jump.ONE);
 			
 		case Opcodes.OPCODE_L2D:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2D));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.L2D));
 			
 		case Opcodes.OPCODE_L2F:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2F));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.L2F));
 			
 		case Opcodes.OPCODE_L2I:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.L2I));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.L2I));
 			
 		case Opcodes.OPCODE_LADD:
 			return new ExprSemiring(ARITH, new Arith(Arith.ADD, Category.TWO));
@@ -513,7 +513,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, new Arith(Arith.MUL, Category.TWO));
 			
 		case Opcodes.OPCODE_LNEG:
-			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.LNEG));
+			return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.LNEG));
 			
 		case Opcodes.OPCODE_LOOKUPSWITCH:
 			return new ExprSemiring(JUMP, ainst);
@@ -717,7 +717,7 @@ public class InstructionTranslator {
 		Set<Integer> set = translator.getCastableIds(
 				TranslatorUtils.resolveClassName(cp, ainst));
 		
-		return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.Type.CONTAINS, set));
+		return new ExprSemiring(UNARYOP, new Unaryop(Unaryop.CONTAINS, set));
 	}
 	
 	private static ExprSemiring invokevirtualInst(CPInfo[] cp, AbstractInstruction ainst) {
@@ -730,13 +730,13 @@ public class InstructionTranslator {
 				int type = -1;
 				if (ref[2].equals("()V"))
 					type = Print.NOTHING;
-				else if (ref[2].matches("(I)V"))
+				else if (ref[2].equals("(I)V"))
 					type = Print.INTEGER;
-				else if (ref[2].matches("(J)V"))
+				else if (ref[2].equals("(J)V"))
 					type = Print.LONG;
-				else if (ref[2].matches("(F)V"))
+				else if (ref[2].equals("(F)V"))
 					type = Print.FLOAT;
-				else if (ref[2].matches("(D)V"))
+				else if (ref[2].equals("(D)V"))
 					type = Print.DOUBLE;
 				else if (ref[2].equals("(C)V"))
 					type = Print.CHARACTER;

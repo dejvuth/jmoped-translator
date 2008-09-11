@@ -84,6 +84,10 @@ public class Bypasser {
 		set.add(TranslatorUtils.formatName("java/lang/Object", "notify", "()V"));
 		set.add(TranslatorUtils.formatName("java/lang/Object", "notifyAll", "()V"));
 		m.put("java/lang/Object", set);
+		
+		set = new HashSet<String>(2);
+		set.add(TranslatorUtils.formatName("java/lang/String", "hashCode", "()I"));
+		m.put("java/lang/String", set);
 	}
 	
 	/**
@@ -130,6 +134,8 @@ public class Bypasser {
 			bypassMath(module, translator, called, label, nextlabel);
 		} else if (called[0].equals("java/lang/Object")) {
 			bypassObject(module, translator, called, label, nextlabel);
+		} else if (called[0].equals("java/lang/String")) {
+			bypassString(module, translator, called, label, nextlabel);
 		}
 		
 		return true;
@@ -334,6 +340,18 @@ public class Bypasser {
 			} else {
 				module.addRule(label, new ExprSemiring(POPPUSH, new Poppush(1, 0)), nextlabel);
 			}
+			return;
+		}
+		
+		error(called);
+	}
+	
+	private static void bypassString(Module module,
+			Translator translator, String[] called,
+			String label, String nextlabel) {
+		if (called[1].equals("hashCode")) {
+			module.addRule(label, 
+					new ExprSemiring(ExprType.JUMP, Jump.ONE), nextlabel);
 			return;
 		}
 		

@@ -803,9 +803,15 @@ public class MethodTranslator implements ModuleMaker {
 	private boolean invoke(Translator translator, String[] called, 
 			String label, String nextlabel, ClassTranslator coll, int id, boolean cond) {
 		
+		// Bypasses if possible
+		if (Bypasser.bypass(module, translator, 
+				new String[] { coll.getName(), called[1], called[2] }, label, nextlabel)) 
+			return true;
+		
 		// The method might not exist, if the class is abstract
 		ModuleMaker maker = coll.getModuleMaker(called[1], called[2]);
 		if (maker == null) {
+			log("\t\tNot found: %s.%s%s%n", coll.getName(), called[1], called[2]);
 			return false;
 		}
 		
@@ -896,8 +902,18 @@ public class MethodTranslator implements ModuleMaker {
 		// Invokes all possible implementers
 		String freshlabel = getFreshReturnLabel();
 		for (ClassTranslator imp : implementers) {
-			log("\timplementer: %s%n", imp);
-			invoke(translator, called, label, freshlabel, imp, imp.getId(), true);
+			log("\timplementor: %s%n", imp);
+			
+			ClassTranslator toinvoke = imp;
+			ModuleMaker maker = imp.getModuleMaker(called[1], called[2]);
+			if (maker == null) {
+				toinvoke = findSuperClassHavingMethod(imp, called[1], called[2], translator);
+				if (toinvoke == null) {
+					log("\t\tCannot find method %s.%s%s%n", imp.getName(), called[1], called[2]);
+					continue;
+				}
+			}
+			invoke(translator, called, label, freshlabel, toinvoke, imp.getId(), true);
 		}
 		
 		handleException(translator, freshlabel, nextlabel, offset, cp);
@@ -1120,9 +1136,10 @@ public class MethodTranslator implements ModuleMaker {
 	}
 	
 	private void poppush(String label, String desc, boolean stc, String nextlabel, String[] called) {
-		
-		log("\tpoppush(%s, %s, %b, %s)%n", label, desc, stc, nextlabel);
-		System.err.printf("Warning: method %s not found.%n", Arrays.toString(called));
+		if (debug()) {
+			log("\tWarning: method %s not found.%n", Arrays.toString(called));
+			log("\tpoppush(%s, %s, %b, %s)%n", label, desc, stc, nextlabel);
+		}
 		module.addRule(label, POPPUSH, new Poppush(
 				TranslatorUtils.countParams(desc) + ((stc) ? 0 : 1), 
 				TranslatorUtils.getReturnCategory(desc).intValue()), 
@@ -1189,11 +1206,13 @@ public class MethodTranslator implements ModuleMaker {
 		// Invokes the first super class that has the method if this class does't have it
 		String freshlabel = getFreshReturnLabel();
 		if (superColl != null) {
+			log("\t\tsuperColl: %s%n", superColl.getName());
 			invoke(translator, called, label, freshlabel, superColl, coll.getId(), cond);
 		}
 		
 		// Invokes all possible sub classes
 		for (ClassTranslator subColl : subs) {
+			log("\t\tsubColl: %s%n", subColl.getName());
 			invoke(translator, called, label, freshlabel, subColl, subColl.getId(), cond);
 		}
 		
@@ -1539,6 +1558,10 @@ public class MethodTranslator implements ModuleMaker {
 	public static String getClinitName(String className) {
 		
 		return TranslatorUtils.formatName(className, "<clinit>", "()V");
+	}
+	
+	private static boolean debug() {
+		return Translator.debug();
 	}
 	
 	private static void log(String msg, Object... args) {

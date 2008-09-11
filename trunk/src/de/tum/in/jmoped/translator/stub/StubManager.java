@@ -60,8 +60,10 @@ public class StubManager {
 		stubs.add("java/util/logging/Logger");
 		
 		stubs.add("net/sf/javabdd/BDD");
+		stubs.add("net/sf/javabdd/BDD$BDDIterator");
 		stubs.add("net/sf/javabdd/BDDDomain");
 		stubs.add("net/sf/javabdd/BDDFactory");
+		stubs.add("net/sf/javabdd/BDDPairing");
 		stubs.add("net/sf/javabdd/BDDFactory$Node");
 		stubs.add("net/sf/javabdd/BDDVarSet");
 		

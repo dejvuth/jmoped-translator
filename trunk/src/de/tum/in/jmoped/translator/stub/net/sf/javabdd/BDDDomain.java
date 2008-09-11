@@ -4,10 +4,12 @@ import de.tum.in.jmoped.translator.stub.java.math.BigInteger;
 
 public class BDDDomain {
 
+	int index;
 	BigInteger size;
 	int[] vars;
 	
-	BDDDomain(long size) {
+	BDDDomain(int index, long size) {
+		this.index = index;
 		this.size = BigInteger.valueOf(size);
 		
 		int bits;
@@ -25,13 +27,18 @@ public class BDDDomain {
 		vars = new int[bits];
 	}
 	
-	public BDD buildEquals(BDDDomain that) {
-		int[] thatvars = that.vars;
+	public int getIndex() {
+		return index;
+	}
+	
+	static int buildEquals(BDDDomain dom1, BDDDomain dom2) {
+		int[] vars1 = dom1.vars;
+		int[] vars2 = dom2.vars;
 		int one = 1;
-		for (int i = vars.length - 1; i >= 0; i--) {
+		for (int i = vars1.length - 1; i >= 0; i--) {
 			// Finds the greater var
-			int greater = thatvars[i];
-			int less = vars[i];
+			int greater = vars2[i];
+			int less = vars1[i];
 			if (greater < less) {
 				int tmp = greater;
 				greater = less;
@@ -45,7 +52,31 @@ public class BDDDomain {
 			// Puts the less var
 			one = BDDFactory.mk(less, left, right);
 		}
-		return new BDD(one);
+		return one;
+	}
+	
+	public BDD buildEquals(BDDDomain that) {
+		return new BDD(buildEquals(this, that));
+//		int[] thatvars = that.vars;
+//		int one = 1;
+//		for (int i = vars.length - 1; i >= 0; i--) {
+//			// Finds the greater var
+//			int greater = thatvars[i];
+//			int less = vars[i];
+//			if (greater < less) {
+//				int tmp = greater;
+//				greater = less;
+//				less = tmp;
+//			}
+//			
+//			// Puts the greater var closer to the node one
+//			int left = BDDFactory.mk(greater, one, 0);
+//			int right = BDDFactory.mk(greater, 0, one);
+//			
+//			// Puts the less var
+//			one = BDDFactory.mk(less, left, right);
+//		}
+//		return new BDD(one);
 	}
 	
 	public BDDFactory getFactory() {
@@ -77,12 +108,22 @@ public class BDDDomain {
 		return new BDD(one);
 	}
 	
-	public BDDVarSet set() {
+	static int set(BDDDomain dom) {
+		int[] vars = dom.vars;
 		int one = 1;
 		for (int i = vars.length - 1; i >= 0; i--) {
 			one = BDDFactory.mk(vars[i], 0, one);
 		}
-		return new BDDVarSet(one);
+		return one;
+	}
+	
+	public BDDVarSet set() {
+		return new BDDVarSet(set(this));
+//		int one = 1;
+//		for (int i = vars.length - 1; i >= 0; i--) {
+//			one = BDDFactory.mk(vars[i], 0, one);
+//		}
+//		return new BDDVarSet(one);
 	}
 	
 	public BigInteger size() {

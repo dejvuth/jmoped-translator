@@ -17,6 +17,6 @@ public class BDDDomainTest {
 		BDD eq = doms[0].buildEquals(doms[4]);
 		
 		bdd.andWith(eq);
-		Assert.assertEquals(1, bdd.scanVar(doms[4]).intValue());
+		Assert.assertEquals(1, bdd.scanVar(doms[4]));
 	}
 }
