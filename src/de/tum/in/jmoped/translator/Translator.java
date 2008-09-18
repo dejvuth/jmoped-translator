@@ -226,7 +226,7 @@ public class Translator {
 			 *  A boolean variable for each class, except the starting class,
 			 *  to control its static initializer.
 			 */
-			if (/*coll.containsClinit() &&*/ coll.getId() != 0) {
+			if (/*coll.containsClinit() &&*/ coll.getId() != 0 && !coll.getName().startsWith("[")) {
 				gv.add(new Variable(Variable.BOOLEAN, coll.getName(), 0, true));
 			}
 			
@@ -265,7 +265,7 @@ public class Translator {
 			}
 			
 			// Manually creates a static initializer if not exist
-			if (!coll.containsClinit()) {
+			if (!coll.getName().startsWith("[") && !coll.containsClinit()) {
 				modules.add(MethodTranslator.makeClinit(this, coll.getName()));
 			}
 		}
@@ -401,6 +401,13 @@ public class Translator {
 		}
 	}
 	
+	/**
+	 * Gets all translators of classes (including their subclasses) 
+	 * that implement the interface specified by <code>name</code>.
+	 * 
+	 * @param name the interface name.
+	 * @return the class translators.
+	 */
 	public Set<ClassTranslator> getImplementers(String name) {
 		
 		// Returns the set if already created
@@ -431,6 +438,7 @@ public class Translator {
 			for (int i = 0; i < interfaces.length; i++) {
 				if (subs.contains(interfaces[i])) {
 					classes.add(coll);
+					classes.addAll(coll.getDescendantClasses());
 				}
 			}
 		}
@@ -1023,11 +1031,13 @@ public class Translator {
 			Translator translator = new Translator(className, 
 					paths.toArray(new String[paths.size()]), 
 					methodName, methodDesc);
+//			System.out.println(translator);
 			
 			// Translate to Remopla
 			int bits = Integer.parseInt(args[1]);
 			int heapSize = Integer.parseInt(args[2]);
 			Remopla remopla = translator.translate(bits, heapSize, true, 1, false);
+//			System.out.println(remopla);
 			System.out.println(remopla.toMoped());
 		} catch (Throwable e) {
 			e.printStackTrace();

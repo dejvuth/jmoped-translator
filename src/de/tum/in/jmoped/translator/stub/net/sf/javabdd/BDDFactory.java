@@ -104,7 +104,7 @@ public class BDDFactory {
 	}
 	
 	private static int hash(int i, int v0, int v1) {
-		return (pair(i, pair(v0, v1)) % 251) % maxnodenum;
+		return pair(i, pair(v0, v1)) % maxnodenum;
 	}
 	
 	private static int pair(int i, int j) {
@@ -137,6 +137,10 @@ public class BDDFactory {
 		BDDPairing pairing = new BDDPairing();
 		pairing.set(dom1, dom2);
 		return pairing;
+	}
+	
+	public BDDVarSet emptySet() {
+		return new BDDVarSet(1);
 	}
 	
 	public BDDVarSet makeSet(BDDDomain[] doms) {

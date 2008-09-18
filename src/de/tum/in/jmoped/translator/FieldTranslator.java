@@ -79,12 +79,15 @@ public class FieldTranslator {
 	 * @return the id of this field.
 	 */
 	public int getId() {
-		
 		return id;
 	}
 	
+	/**
+	 * Gets the name of this field.
+	 * 
+	 * @return the name of this field.
+	 */
 	public String getName() {
-		
 		if (name != null) return name;
 		name = formatName(field.getClassFile(), field);
 		return name;

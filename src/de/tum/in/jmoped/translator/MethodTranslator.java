@@ -406,7 +406,7 @@ public class MethodTranslator implements ModuleMaker {
 				break;
 				
 			case Opcodes.OPCODE_INVOKESPECIAL:
-				invokespecial(translator, d, label, nextLabel(i));
+				invokespecial(translator, d, label, nextLabel(i), ainst.getOffset(), cp);
 				break;
 				
 			case Opcodes.OPCODE_INVOKESTATIC:
@@ -475,19 +475,9 @@ public class MethodTranslator implements ModuleMaker {
 			case Opcodes.OPCODE_DRETURN:
 			case Opcodes.OPCODE_FRETURN:
 			case Opcodes.OPCODE_IRETURN:
-			case Opcodes.OPCODE_LRETURN: {
-//				if (!translator.multithreading() || !isSynchronized()) {
-//					module.addRule(label, d);
-//					break;
-//				}
-//				String label1 = getFreshReturnLabel();
-//				String label2 = getFreshReturnLabel();
-//				module.addRule(label, new ExprSemiring(LOAD, new Local(CategoryType.ONE, 0)), label1);
-//				module.addSharedRule(label1, new ExprSemiring(MONITOREXIT), label2);
-//				module.addRule(label2, d);
+			case Opcodes.OPCODE_LRETURN:
 				returnExpr(translator, d, label);
 				break;
-			}
 			
 			case Opcodes.OPCODE_TABLESWITCH:
 				tableswitch(translator, d, label, nextLabel(i));
@@ -615,17 +605,14 @@ public class MethodTranslator implements ModuleMaker {
 		// If the class is ignored, pushes nondeterministically
 		ClassTranslator coll = translator.getClassTranslator(eref0);
 		if (coll == null) {
-//			module.addSharedRule(label, 
-//					new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE, 1)), 
-//					nextlabel);
 			poppushfield(d.type, cat.intValue(), label, nextlabel);
 			return;
 		}
 		
-		String fieldName = resolveFieldName(coll, ref[1], translator);//FieldTranslator.formatName(coll.getName(), ref[1]);
+		String fieldName = resolveFieldName(coll, ref[1], translator);
 		HashSet<ClassTranslator> supers = getSuperClassesUntil(eref0, coll, translator);
-//		ClassTranslator sup = findSuperClassHavingField(coll, ref[1], translator);
-		Set<ClassTranslator> subs = coll.getSubClasses();
+//		Set<ClassTranslator> subs = coll.getSubClasses();
+		Set<ClassTranslator> subs = coll.getDescendantClasses();
 		boolean hasCond = supers.size() > 1 || subs != null;
 		int baseid = translator.getObjectBaseId();
 		
@@ -660,8 +647,12 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// Subclasses
 		for (ClassTranslator subColl : subs) {
+			log("\tsubColl.getName(): %s%n", subColl.getName());
 			field = subColl.getInstanceFieldTranslator(fieldName);
-			if (field == null) continue;
+			if (field == null) {
+				log("\t\tfield %s not found%n", fieldName);
+				continue;
+			}
 			Condition cond = new Condition(Condition.CONTAINS, setOf(subColl.getId()));
 			module.addSharedRule(label, 
 					new ExprSemiring(d.type, 
@@ -725,6 +716,31 @@ public class MethodTranslator implements ModuleMaker {
 	}
 	
 	/**
+	 * Recursively goes up in the object hierarchy and returns the first class
+	 * that has the field specified by <code>fname</code>.
+	 * 
+	 * @param coll
+	 * @param fname
+	 * @param translator
+	 * @return
+	 */
+	private static FieldTranslator findSuperClassHavingField(ClassTranslator coll, 
+			String fname, Translator translator) {
+		
+		String qname = FieldTranslator.formatName(coll.getName(), fname);
+		FieldTranslator field = coll.getStaticFieldTranslator(qname);
+		if (field  != null) return field;
+		
+		String superName = coll.getSuperClassName();
+		if (superName == null) return null;
+		
+		ClassTranslator superColl = translator.getClassTranslator(superName);
+		if (superColl == null) return null;
+				
+		return findSuperClassHavingField(superColl, fname, translator);
+	}
+	
+	/**
 	 * Handles GETSTATIC and PUTSTATIC.
 	 * 
 	 * @param translator
@@ -742,16 +758,14 @@ public class MethodTranslator implements ModuleMaker {
 		// If the class is ignored, pushes nondeterministically
 		Category cat = TranslatorUtils.getCategory(ref[2]);
 		if (coll == null) {
-//			module.addRule(label, 
-//					new ExprSemiring(PUSH, new ExprSemiring.Value(CategoryType.ONE)), 
-//					nextlabel);
 			poppushstatic(d.type, cat.intValue(), label, nextlabel);
 			return;
 		}
 		
-		String name = FieldTranslator.formatName(coll.getName(), ref[1]);
-		FieldTranslator field = coll.getStaticFieldTranslator(name);
+		FieldTranslator field = findSuperClassHavingField(coll, ref[1], translator);
 		if (field == null) {
+			if (debug())
+				log("\tStatic field %s not found%n", Arrays.toString(ref));
 			poppushstatic(d.type, cat.intValue(), label, nextlabel);
 			return;
 		}
@@ -764,7 +778,7 @@ public class MethodTranslator implements ModuleMaker {
 			}
 		}
 		
-		d.value = new Field(cat, name);
+		d.value = new Field(cat, field.getName());
 
 		if (callClinit(translator, coll)) {
 			
@@ -891,7 +905,7 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// Adds goto NPE
 		String[] called = (String[]) d.value;
-		Translator.log("\tinvokeinterface: %s%n", Arrays.toString(called));
+		log("\tinvokeinterface: %s%n", Arrays.toString(called));
 		npe(label, TranslatorUtils.countParams(called[2]));
 		
 		// Starts new thread
@@ -912,6 +926,7 @@ public class MethodTranslator implements ModuleMaker {
 					log("\t\tCannot find method %s.%s%s%n", imp.getName(), called[1], called[2]);
 					continue;
 				}
+				log("\ttoinvoke: %s%n", toinvoke);
 			}
 			invoke(translator, called, label, freshlabel, toinvoke, imp.getId(), true);
 		}
@@ -1098,14 +1113,14 @@ public class MethodTranslator implements ModuleMaker {
 		
 		// False branch
 		String alabel = LabelUtils.formatAssertionName(badlabel);
-		module.addRule(badlabel, 
+		module.addRule(fromlabel,//badlabel, 
 				new ExprSemiring(IF, new If(falsebranch)), 
 				alabel);
 		module.addRule(alabel, ERROR, alabel);
 	}
 	
 	private void invokespecial(Translator translator, ExprSemiring d, 
-			String label, String nextlabel) {
+			String label, String nextlabel, int offset, CPInfo[] cp) {
 		
 		String[] called = (String[]) d.value;
 		log("\tinvokespecial: %s%n", Arrays.toString(called));
@@ -1117,8 +1132,11 @@ public class MethodTranslator implements ModuleMaker {
 			return;
 		}
 		
-		if (!invoke(translator, called, label, nextlabel, coll, coll.getId(), false))
+		String freshlabel = getFreshReturnLabel();
+		if (!invoke(translator, called, label, freshlabel, coll, coll.getId(), false))
 			poppush(label, called[2], false, nextlabel, called);
+		else
+			handleException(translator, freshlabel, nextlabel, offset, cp);
 	}
 	
 	private void dynamic(Translator translator, String[] called, 
@@ -1373,7 +1391,7 @@ public class MethodTranslator implements ModuleMaker {
 		// Jumps to return address
 		for (int i = 0; i < jsrtable.size(); i++) {
 			module.addRule(freshlabel, 
-					new ExprSemiring(IF, new If(i)), 
+					new ExprSemiring(IF, new If(If.IS, i)), 
 					jsrtable.get(i));
 		}
 	}
@@ -1464,7 +1482,8 @@ public class MethodTranslator implements ModuleMaker {
 	
 	/**
 	 * Recursively goes up in the object hierarchy and returns the first class
-	 * that has the method specified by methodName and methodDesc.
+	 * that has the method specified by <code>methodName</code> 
+	 * and <code>methodDesc</code>.
 	 * 
 	 * @param coll
 	 * @param methodName
@@ -1510,7 +1529,7 @@ public class MethodTranslator implements ModuleMaker {
 		}
 	}
 	
-	private static Set<Integer> setOf(int value) {
+	public static Set<Integer> setOf(int value) {
 		return new HashSet<Integer>(Arrays.asList(value));
 	}
 	
