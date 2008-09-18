@@ -54,6 +54,10 @@ public class BDD {
 		return this;
 	}
 	
+	public BDD and(BDD that) {
+		return new BDD(applyWith(AND, u, that.u));
+	}
+	
 	public BDD biimpWith(BDD that) {
 		u = applyWith(BIIMP, u, that.u);
 		return this;

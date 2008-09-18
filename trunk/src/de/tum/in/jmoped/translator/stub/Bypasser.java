@@ -24,6 +24,7 @@ import de.tum.in.jmoped.translator.TranslatorUtils;
 import de.tum.in.jmoped.underbone.Module;
 import de.tum.in.jmoped.underbone.expr.Arith;
 import de.tum.in.jmoped.underbone.expr.Category;
+import de.tum.in.jmoped.underbone.expr.Condition;
 import de.tum.in.jmoped.underbone.expr.ExprSemiring;
 import de.tum.in.jmoped.underbone.expr.ExprType;
 import de.tum.in.jmoped.underbone.expr.Field;
@@ -213,7 +214,7 @@ public class Bypasser {
 			for (ClassTranslator ct : set) {
 				String freshlabel0 = MethodTranslator.getFreshReturnLabel();
 				module.addRule(label,
-						new ExprSemiring(ExprType.IF, new If(If.IS, ct.getId())),
+						new ExprSemiring(ExprType.IF, new If(If.ID, ct.getId())),
 						freshlabel0);
 				
 				String freshlabel1 = MethodTranslator.getFreshReturnLabel();
@@ -229,7 +230,7 @@ public class Bypasser {
 			for (ClassTranslator ct : all) {
 				String freshlabel0 = MethodTranslator.getFreshReturnLabel();
 				module.addRule(label,
-						new ExprSemiring(ExprType.IF, new If(If.IS, ct.getId())),
+						new ExprSemiring(ExprType.IF, new If(If.ID, ct.getId())),
 						freshlabel0);
 				
 				String freshlabel1 = MethodTranslator.getFreshReturnLabel();
@@ -251,7 +252,7 @@ public class Bypasser {
 				
 				String freshlabel0 = MethodTranslator.getFreshReturnLabel();
 				module.addRule(label,
-						new ExprSemiring(ExprType.IF, new If(If.IS, ct.getId())),
+						new ExprSemiring(ExprType.IF, new If(If.ID, ct.getId())),
 						freshlabel0);
 				
 				String freshlabel1 = MethodTranslator.getFreshReturnLabel();
@@ -350,8 +351,11 @@ public class Bypasser {
 			Translator translator, String[] called,
 			String label, String nextlabel) {
 		if (called[1].equals("hashCode")) {
+			int id = translator.getClassTranslator("java/lang/String").getId();
 			module.addRule(label, 
-					new ExprSemiring(ExprType.JUMP, Jump.ONE), nextlabel);
+					new ExprSemiring(ExprType.JUMP, Jump.ONE, 
+							new Condition(Condition.CONTAINS, MethodTranslator.setOf(id))), 
+					nextlabel);
 			return;
 		}
 		

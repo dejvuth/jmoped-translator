@@ -438,11 +438,14 @@ public class MethodWrapper {
 				Value v;
 				if (range != null) {
 					v = new Value(Category.ONE, range.min, 1, range.max);
-					d = new ExprSemiring(NEWARRAY, new Newarray(v));
+//					d = new ExprSemiring(NEWARRAY, new Newarray(v, 
+//							new int[] { translator.getClassTranslator(param).getId() }));
 				} else {
 					v = new Value(Category.ONE);
-					d = new ExprSemiring(NEWARRAY, new Newarray(v));
+//					d = new ExprSemiring(NEWARRAY, new Newarray(v));
 				}
+				d = new ExprSemiring(NEWARRAY, new Newarray(v, 
+						new int[] { translator.getClassTranslator(param).getId() }));
 				init.addRule(from, d, to);
 			} else {
 				// We need 3 more local variables for each array
@@ -470,7 +473,8 @@ public class MethodWrapper {
 				// Pushes the min value of array elements
 				from = to; to = getFreshLabel();
 				init.addRule(from, 
-						NEWARRAY, new Newarray(new Value(Category.ONE, min)), 
+						NEWARRAY, new Newarray(new Value(Category.ONE, min), 
+								new int[] { translator.getClassTranslator(param).getId() }), 
 						to);
 					
 				from = to; to = getFreshLabel();

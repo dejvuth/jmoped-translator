@@ -838,7 +838,7 @@ public class InstructionTranslator {
 		}
 			
 		return new ExprSemiring(NEWARRAY, 
-				new Newarray(new Value(Category.ONE, 0), dim, types));
+				new Newarray(new Value(Category.ONE, 0), types));
 	}
 	
 	private static ExprSemiring newInst(CPInfo[] cp, AbstractInstruction ainst) {

@@ -264,7 +264,7 @@ public class ClassTranslator {
 		return superClass;
 	}
 	
-	public void setSubClasses(HashSet<ClassTranslator> subClasses) {
+	void setSubClasses(HashSet<ClassTranslator> subClasses) {
 		this.subClasses = subClasses;
 	}
 	
@@ -300,6 +300,11 @@ public class ClassTranslator {
 		return allSubClasses;
 	}
 	
+	/**
+	 * Returns the interfaces that this class implements.
+	 * 
+	 * @return the interfaces.
+	 */
 	public String[] getInterfaces() {
 		return interfaces;
 	}
