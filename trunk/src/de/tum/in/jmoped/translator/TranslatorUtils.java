@@ -54,9 +54,13 @@ public class TranslatorUtils {
 		} else {
 			// System.getProperty("java.home") outputs e.g. /opt/jdk1.5.0_04/jre
 			javaHome = System.getProperty("java.home");
-			// But we want only /opt/jdk1.5.0_04
-			JAVA_HOME = javaHome.substring(0, javaHome.length() - 4);
+			if (javaHome.endsWith("jre"))
+				// But we want only /opt/jdk1.5.0_04
+				JAVA_HOME = javaHome.substring(0, javaHome.length() - 4);
+			else
+				JAVA_HOME = javaHome;
 		}
+		Translator.log("JAVA_HOME: %s%n", JAVA_HOME);
 	}
 
 	/**
@@ -77,7 +81,7 @@ public class TranslatorUtils {
 		if (replacement.equals("\\"))
 			replacement = "\\\\";
 		String filename = className.replaceAll("/|\\.", replacement) + ".class";
-		Translator.log("filename: %s%n", filename);
+		Translator.log("\tfilename: %s%n", filename);
 		
 		// Joins the given search paths and the classpaths
 		ArrayList<String> paths = new ArrayList<String>();
@@ -113,6 +117,7 @@ public class TranslatorUtils {
 		File rtFile = new File(JAVA_HOME,  File.separator + "jre" 
 				+ File.separator + "lib" + File.separator + "rt.jar");
 		if (rtFile.isFile()) {
+			Translator.log("\trt.jar: %s%n", rtFile.getAbsolutePath());
 			cf = findClassFile(new JarFile(rtFile), filename);
 			if (cf != null) return cf;
 		}
@@ -120,6 +125,7 @@ public class TranslatorUtils {
 		// Falls back to JAVA_HOME/lib/rt.jar
 		rtFile = new File(JAVA_HOME, File.separator + "lib" + File.separator + "rt.jar");
 		if (rtFile.isFile()) {
+			Translator.log("\trt.jar: %s%n", rtFile.getAbsolutePath());
 			cf = findClassFile(new JarFile(rtFile), filename);
 			if (cf != null) return cf;
 		}

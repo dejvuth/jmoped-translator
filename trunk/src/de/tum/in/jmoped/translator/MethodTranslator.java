@@ -706,12 +706,15 @@ public class MethodTranslator implements ModuleMaker {
 		 *  (2) the field (or the method to be called) 
 		 *  	does not belong to the starting class (because
 		 *  	it's already included), and
-		 *  (3) this method is not the initializer.
+		 *  (3) this method is not the initializer,
+		 *  (4) this class is not an array.
 		 */
 		boolean cond1 = true; //ct.containsClinit();
 		boolean cond2 = !translator.getInitClassName().equals(ct.getName());
 		boolean cond3 = !isClinitOf(ct.getName());
-		log("\tcond1: %b, cond2: %b, cond3: %b%n", cond1, cond2, cond3);
+		boolean cond4 = !ct.isArrayType();
+		log("\tcond1: %b, cond2: %b, cond3: %b, cond4: %b%n", 
+				cond1, cond2, cond3, cond4);
 		return cond1 && cond2 && cond3;
 	}
 	
