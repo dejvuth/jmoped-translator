@@ -744,12 +744,12 @@ public class MethodWrapper {
 		}
 		
 		/**
-		 * max + 1
+		 * max - min + 1
 		 * 
 		 * @return
 		 */
 		long size() {
-			return max + 1;
+			return max - min + 1;
 		}
 		
 		/**
