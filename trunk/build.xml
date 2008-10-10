@@ -13,6 +13,7 @@
   <property name="jwpds-jar" value="../jwpds/build/jar/jwpds.jar"/>
   <property name="underbone-jar" value="../underbone/build/jar/underbone.jar"/>
   <property name="native-cudd.dir" value="../underbone/lib/"/>
+  <property name="underbone.dir" value="../underbone"/>
 
   <path id="classpath">
     <pathelement location="${jwpds-jar}"/>
@@ -29,12 +30,16 @@
     </fileset>
     <fileset dir="${lib.dir}" includes="**/*.jar"/>
   </path> 
+  
+  <target name="underbone" description="">
+    <ant dir="${underbone.dir}" target="jar" inheritAll="false"/>
+  </target>
 
   <target name="clean">
     <delete dir="${build.dir}"/>
   </target>
 
-  <target name="compile">
+  <target name="compile" depends="underbone">
     <mkdir dir="${classes.dir}"/>
     <javac srcdir="${src.dir}" destdir="${classes.dir}" classpathref="classpath" debug="true" excludes="**/*Test.java"/>
     <copy todir="${classes.dir}">
@@ -42,7 +47,7 @@
     </copy> 
   </target>
 
-  <target name="compile-tests">
+  <target name="compile-tests" depends="underbone">
     <mkdir dir="${classes-tests.dir}"/>
     <javac srcdir="${src-test.dir}" destdir="${classes-tests.dir}" classpathref="classpath.test" debug="true" includes="**/*Test.java"/>
     <copy todir="${classes-tests.dir}">
