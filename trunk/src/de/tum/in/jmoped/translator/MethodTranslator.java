@@ -221,7 +221,7 @@ public class MethodTranslator implements ModuleMaker {
 	public static Module makeClinit(Translator translator, String className) {
 		Module module = new Module(clinitOf(className), 0, 1, 0);
 		String label = makeClinit(translator, module);
-		module.addRule(label, new ExprSemiring(ExprType.RETURN, new Return(Return.Type.VOID)));
+		module.addRule(label, new ExprSemiring(ExprType.RETURN, new Return(Return.VOID)));
 		return module;
 	}
 	
@@ -278,53 +278,12 @@ public class MethodTranslator implements ModuleMaker {
 		String label = TranslatorUtils.formatName(name, 0);
 		module = new Module(name, 
 				TranslatorUtils.countParams(isStatic(), method),
-//				TranslatorUtils.doubleParams(isStatic(), method), 
-//				TranslatorUtils.isVoid(method), 
-				codeAttr.getMaxStack(), 
+				codeAttr.getMaxStack() + 1, // +1 because of exception modeling
 				codeAttr.getMaxLocals());
 		
 		// If this is static initializer, 
 		if (isClinit()) {
 			label = makeClinit(translator, module);
-			
-//			/*
-//			 * Sets the boolean var to true, 
-//			 * if this is not the static init of the selected method.
-//			 */
-//			String thisName = TranslatorUtils.extractClassName(name);
-//			if (!translator.getInitClassName().equals(thisName)) {
-//				module.ensureMaxStack(1);
-//				
-//				String next = getFreshReturnLabel();
-////				module.addRule(label, GLOBALPUSH, thisName, 1, next);
-//				module.addRule(label, new ExprSemiring(PUSH, new Value(Category.ONE, 1)), next);
-//				label = next;
-//				
-//				next = getFreshReturnLabel();
-//				module.addRule(label, new ExprSemiring(GLOBALSTORE, new Field(Category.ONE, thisName)), next);
-//				label = next;
-//			}
-//			
-//			// Calls the super's static initializer (if any)
-//			String superName = translator.getClassTranslator(thisName).getSuperClassName();
-//			log("Super name: %s%n", superName);
-//			ClassTranslator superColl = translator.getClassTranslator(superName);
-//			if (superColl != null && superColl.containsClinit() 
-//					&& !translator.getInitClassName().equals(superName)) {
-//				
-//				// <p, name0> -> <p, clinit0 ret0> (INVOKE, 0, (global, EQ))
-//				String next = getFreshReturnLabel();
-//				module.addRule(label,
-//						new ExprSemiring(INVOKE, new Invoke(), new Condition(Condition.ZERO, superName)), 
-//						TranslatorUtils.formatName(clinitOf(superName), 0), 
-//						next);
-//				
-//				// <p, name0> -> <p, label> (ONE, (global, NE))
-//				module.addRule(label,
-//						new ExprSemiring(JUMP, Jump.ONE, new Condition(Condition.ONE, superName)), 
-//						next);
-//				label = next;
-//			}
 		}
 		
 		CPInfo[] cp = method.getClassFile().getConstantPool();
@@ -889,7 +848,7 @@ public class MethodTranslator implements ModuleMaker {
 		module.addRule(n2, new ExprSemiring(JUMP, Jump.ONE, cond), n3);
 		
 		// [Exception] THROW if the status non-zero
-		athrow(translator, new ExprSemiring(RETURN, new Return(Return.Type.VOID)), n2, offset, cp);
+		athrow(translator, new ExprSemiring(RETURN, new Return(Return.VOID)), n2, offset, cp);
 		
 		// [Exception] Pops the status variable
 		module.addRule(n3, new ExprSemiring(POPPUSH, new Poppush(1, 0)), nextlabel);
@@ -1224,17 +1183,32 @@ public class MethodTranslator implements ModuleMaker {
 		// cond is true if there are more than one possibilities
 		boolean cond = subs.size() + ((superColl != null) ? 1 : 0) > 1;
 		
+		HashSet<Integer> others = null;
+		if (called[1].equals("hashCode") && called[2].equals("()I"))
+			others = new HashSet<Integer>();
+		
 		// Invokes the first super class that has the method if this class does't have it
 		String freshlabel = getFreshReturnLabel();
 		if (superColl != null) {
 			log("\t\tsuperColl: %s%n", superColl.getName());
 			invoke(translator, called, label, freshlabel, superColl, coll.getId(), cond);
+			if (others != null)
+				others.add(coll.getId());
 		}
 		
 		// Invokes all possible sub classes
 		for (ClassTranslator subColl : subs) {
 			log("\t\tsubColl: %s%n", subColl.getName());
 			invoke(translator, called, label, freshlabel, subColl, subColl.getId(), cond);
+			if (others != null)
+				others.add(subColl.getId());
+		}
+		
+		if (others != null) {
+			module.addRule(label, 
+					new ExprSemiring(ExprType.JUMP, Jump.ONE, 
+							new Condition(Condition.NOTCONTAINS, others)), 
+					nextlabel);
 		}
 		
 		handleException(translator, freshlabel, nextlabel, offset, cp);
