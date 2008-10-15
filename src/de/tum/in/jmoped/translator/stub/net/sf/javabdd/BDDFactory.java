@@ -144,6 +144,8 @@ public class BDDFactory {
 	}
 	
 	public BDDVarSet makeSet(BDDDomain[] doms) {
+		if (doms.length == 0)
+			return emptySet();
 		int u = BDDDomain.set(doms[0]);
 		for (int i = 1; i < doms.length; i++) {
 			u = BDDVarSet.unionWith(u, BDDDomain.set(doms[i]));

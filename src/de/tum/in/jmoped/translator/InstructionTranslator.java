@@ -82,7 +82,7 @@ public class InstructionTranslator {
 			
 		case Opcodes.OPCODE_ARETURN:
 			return new ExprSemiring(RETURN, 
-					new Return(Return.Type.SOMETHING, Category.ONE));
+					new Return(Return.SOMETHING, Category.ONE));
 			
 		case Opcodes.OPCODE_ARRAYLENGTH:
 			return new ExprSemiring(ARRAYLENGTH);
@@ -99,7 +99,7 @@ public class InstructionTranslator {
 					new Local(Category.ONE, ainst.getOpcode() - Opcodes.OPCODE_ASTORE_0));
 			
 		case Opcodes.OPCODE_ATHROW:
-			return new ExprSemiring(RETURN, new Return(Return.Type.VOID));
+			return new ExprSemiring(RETURN, new Return(Return.VOID));
 			
 		case Opcodes.OPCODE_BALOAD:
 			return new ExprSemiring(ARRAYLOAD, Category.ONE);
@@ -174,7 +174,7 @@ public class InstructionTranslator {
 			
 		case Opcodes.OPCODE_DRETURN:
 			return new ExprSemiring(RETURN, 
-					new Return(Return.Type.SOMETHING, Category.TWO));
+					new Return(Return.SOMETHING, Category.TWO));
 			
 		case Opcodes.OPCODE_DSTORE:
 			return new ExprSemiring(STORE, 
@@ -264,7 +264,7 @@ public class InstructionTranslator {
 			
 		case Opcodes.OPCODE_FRETURN:
 			return new ExprSemiring(RETURN, 
-					new Return(Return.Type.SOMETHING, Category.ONE));
+					new Return(Return.SOMETHING, Category.ONE));
 			
 		case Opcodes.OPCODE_FSTORE:
 			return new ExprSemiring(STORE, 
@@ -425,7 +425,7 @@ public class InstructionTranslator {
 			
 		case Opcodes.OPCODE_IRETURN:
 			return new ExprSemiring(ExprType.RETURN, 
-					new Return(Return.Type.SOMETHING, Category.ONE));
+					new Return(Return.SOMETHING, Category.ONE));
 			
 		case Opcodes.OPCODE_ISHL:
 			return new ExprSemiring(ARITH, new Arith(Arith.SHL, Category.ONE));
@@ -525,7 +525,7 @@ public class InstructionTranslator {
 			return new ExprSemiring(ARITH, new Arith(Arith.REM, Category.TWO));
 			
 		case Opcodes.OPCODE_LRETURN:
-			return new ExprSemiring(RETURN, new Return(Return.Type.SOMETHING, Category.TWO));
+			return new ExprSemiring(RETURN, new Return(Return.SOMETHING, Category.TWO));
 			
 		case Opcodes.OPCODE_LSHL:
 			return new ExprSemiring(ARITH, new Arith(Arith.SHL, Category.TWO));
@@ -588,7 +588,7 @@ public class InstructionTranslator {
 					new Local(Category.ONE, TranslatorUtils.immediateByte(ainst)));
 			
 		case Opcodes.OPCODE_RETURN:
-			return new ExprSemiring(ExprType.RETURN, new Return(Return.Type.VOID));
+			return new ExprSemiring(ExprType.RETURN, new Return(Return.VOID));
 			
 		case Opcodes.OPCODE_SALOAD:
 			return new ExprSemiring(ARRAYLOAD, Category.ONE);

@@ -11,6 +11,12 @@ public class BDDPairing {
 	}
 	
 	public void set(BDDDomain[] doms1, BDDDomain[] doms2) {
+		if (doms1.length == 0) {
+			u = 1;
+			vs = 1;
+			return;
+		}
+		
 		u = BDDDomain.buildEquals(doms1[0], doms2[0]);
 		vs = BDDDomain.set(doms1[0]);
 		for (int i = 1; i < doms1.length; i++) {
